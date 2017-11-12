@@ -17,6 +17,7 @@ import (
 	osdcli "github.com/libopenstorage/openstorage/cli"
 	"github.com/libopenstorage/openstorage/cluster"
 	"github.com/libopenstorage/openstorage/config"
+	"github.com/libopenstorage/openstorage/csi"
 	"github.com/libopenstorage/openstorage/graph/drivers"
 	"github.com/libopenstorage/openstorage/volume"
 	"github.com/libopenstorage/openstorage/volume/drivers"
@@ -171,12 +172,31 @@ func start(c *cli.Context) error {
 	}
 
 	isDefaultSet := false
+	csiServers := make(map[string]csi.Server)
+
 	// Start the volume drivers.
 	for d, v := range cfg.Osd.Drivers {
 		dlog.Infof("Starting volume driver: %v", d)
 		if err := volumedrivers.Register(d, v); err != nil {
 			return fmt.Errorf("Unable to start volume driver: %v, %v", d, err)
 		}
+
+		// Start CSI server for driver
+		csiServer, err := csi.NewOsdCsiServer(&csi.OsdCsiServerConfig{
+			Net:          "tcp",
+			Address:      "127.0.0.1:0",
+			DriverName:   d,
+			DriverParams: v,
+		})
+		if err != nil {
+			return fmt.Errorf("Unable to create CSI server: %s", err.Error())
+		}
+		err = csiServer.Start()
+		if err != nil {
+			return fmt.Errorf("Unable to start CSI server: %s", err.Error())
+		}
+		csiServers[d] = csiServer
+		dlog.Infof("CSI server for driver %s on %s", d, csiServer.Address())
 
 		var mgmtPort, pluginPort uint64
 		if port, ok := v[config.MgmtPortKey]; ok {

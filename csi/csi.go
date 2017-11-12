@@ -71,7 +71,7 @@ func NewOsdCsiServer(config *OsdCsiServerConfig) (Server, error) {
 
 	// Register driver name and initialize it using the parameters provided
 	err := volumedrivers.Register(config.DriverName, config.DriverParams)
-	if err != nil {
+	if err != nil && err != volume.ErrExist {
 		return nil, fmt.Errorf("Unable to setup driver %s: %s", config.DriverName, err.Error())
 	}
 

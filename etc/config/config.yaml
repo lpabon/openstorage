@@ -10,7 +10,7 @@ osd:
 #     pluginPort: "2377"
     nfs:
       server: "127.0.0.1"
-      path: "/nfs"
+      path: "/scratch"
 #    btrfs:
 #      home: "/var/lib/openstorage/btrfs"
 #    aws:
