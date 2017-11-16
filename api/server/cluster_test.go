@@ -23,19 +23,26 @@ import (
 
 	"github.com/libopenstorage/openstorage/cluster"
 	"github.com/libopenstorage/openstorage/config"
+	"github.com/portworx/kvdb"
 	"github.com/stretchr/testify/assert"
 )
+
+type testKvdb struct {
+	kvdb.Kvdb
+}
 
 func TestClusterNodeStatus(t *testing.T) {
 	capi := &clusterApi{}
 	ts := httptest.NewServer(http.HandlerFunc(capi.nodeStatus))
 	defer ts.Close()
 
-	// Initialize cluster
-	err := cluster.Init(config.ClusterConfig{})
-	assert.NotNil(t, err)
+	// Keep the global variables happy
+	err := kvdb.SetInstance(&testKvdb{})
+	assert.Nil(t, err)
+	err = cluster.Init(config.ClusterConfig{})
+	assert.Nil(t, err)
 
 	// no routing is needed because the server will invoke the function
 	_, err = http.Get(ts.URL)
-	assert.NotNil(t, err)
+	assert.Nil(t, err)
 }
