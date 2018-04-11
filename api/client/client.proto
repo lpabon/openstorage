@@ -1,0 +1,175 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "api/api.proto";
+
+package openstorage.api.client;
+
+option go_package = "github.com/libopenstorage/openstorage/api/client";
+option java_multiple_files = true;
+option java_package = "com.openstorage.api.client";
+
+service OpenStorageCluster {
+	// Enumerate lists all the nodes in the cluster.
+	rpc Enumerate(ClusterEnumerateRequest)
+		returns (ClusterEnumerateResponse) {}
+
+	// Inspect the node given a UUID.
+	rpc Inspect(ClusterInspectRequest)
+		returns (ClusterInspectResponse) {}
+
+	// SetSize sets the maximum number of nodes in a cluster.
+	rpc SetSize(ClusterSetSizeRequest)
+		returns (ClusterSetSizeResponse) {}
+
+	rpc Remove(ClusterRemoveRequest)
+		returns (ClusterRemoveResponse) {}
+
+	rpc NodeStatus(ClusterNodeStatusRequest)
+		returns (ClusterNodeStatusResponse) {}
+
+	rpc PeerStatus(ClusterPeerStatusRequest)
+		returns (ClusterPeerStatusResponse) {}
+
+	rpc GetNodeIdFromIp(ClusterGetNodeIdFromIpRequest)
+		returns (ClusterGetNodeIdFromIpResponse) {}
+
+	rpc EnumerateAlerts(ClusterEnumerateAlertsRequest)
+		returns (ClusterEnumerateAlertsResponse) {}
+
+	rpc ClearAlert(ClusterClearAlertRequest)
+		returns (ClusterClearAlertResponse) {}
+
+	rpc EraseAlert(ClusterEraseAlertRequest)
+		returns (ClusterEraseAlertResponse) {}
+}
+
+
+// Used to change to api.Node
+message Node {
+	string id = 1;
+	double cpu = 2;
+	uint64 mem_total = 3;
+	uint64 mem_used = 4;
+	uint64 mem_free = 5;
+	int64 avg_load = 6;
+	openstorage.api.Status status = 7;
+	uint64 gen_number = 8;
+	map<string, openstorage.api.StorageResource> disks = 9;
+	repeated openstorage.api.StoragePool pools = 10;
+	string mgmt_ip = 11;
+	string data_ip = 12;
+	google.protobuf.Timestamp timestamp = 13;
+	google.protobuf.Timestamp start_time = 14;
+	string hostname = 15;
+}
+
+// Used to change to api.FluentDConfig
+message FluentDConfig {
+	string ip = 1;
+	string port = 2;
+}
+
+// Used to change to api.TunnelConfig
+message TunnelConfig {
+	string key = 1;
+	string cert = 2;
+	string endpoint = 3;
+}
+
+// Used to change api.Cluster
+message Cluster {
+	openstorage.api.Status status = 1;
+	string id = 2;
+	string node_id = 3;
+	repeated Node nodes = 4;
+	string logging_url = 5;
+	string management_url = 6;
+	FluentDConfig fluent_d_config = 7;
+	TunnelConfig tunnel_config = 8;
+}
+
+// Enumerate
+message ClusterEnumerateRequest {
+}
+
+message ClusterEnumerateResponse {
+	Cluster cluster = 1;
+}
+
+// Inspect
+message ClusterInspectRequest {
+	string node_id = 1;
+}
+
+message ClusterInspectResponse {
+	Node node = 1;
+}
+
+// SetSize
+message ClusterSetSizeRequest {
+	int32 size = 1;
+}
+
+message ClusterSetSizeResponse {
+}
+
+// Remove
+message ClusterRemoveRequest {
+	repeated Node nodes = 1;
+	bool force_remove = 2;
+}
+
+message ClusterRemoveResponse {
+}
+
+// NodeStatus
+message ClusterNodeStatusRequest {
+}
+
+message ClusterNodeStatusResponse {
+	openstorage.api.Status status = 1;
+}
+
+message ClusterPeerStatusRequest {
+	string listener_name = 1;
+}
+
+message ClusterPeerStatusResponse {
+	map <string, openstorage.api.Status> statuses = 1;
+}
+
+message ClusterGetNodeIdFromIpRequest {
+	string ip = 1;
+}
+
+message ClusterGetNodeIdFromIpResponse {
+	string id = 1;
+}
+
+message ClusterEnumerateAlertsRequest {
+	google.protobuf.Timestamp time_start = 1;
+	google.protobuf.Timestamp time_end = 2;
+	openstorage.api.ResourceType resource = 3;
+}
+
+message ClusterEnumerateAlertsResponse {
+	openstorage.api.Alerts alerts = 1;
+}
+
+message ClusterClearAlertRequest {
+	openstorage.api.ResourceType resource = 1;
+	int64 alert_id = 2;
+}
+
+message ClusterClearAlertResponse {
+}
+
+message ClusterEraseAlertRequest {
+	openstorage.api.ResourceType resource = 1;
+	int64 alert_id = 2;
+}
+
+message ClusterEraseAlertResponse {
+}
+

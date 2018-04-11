@@ -78,9 +78,10 @@ $(OSDSANITY)-clean:
 	@$(MAKE) -C cmd/osd-sanity clean
 
 proto:
-	go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
+	#go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
 	@echo "Generating protobuf definitions from api/api.proto"
-	$(PROTOC) -I $(PROTOSRC_PATH) $(PROTOSRC_PATH)/api/api.proto --go_out=plugins=grpc:.
+	$(PROTOC) -I $(PROTOSRC_PATH) $(PROTOSRC_PATH)/api/api.proto --go_out=plugins=grpc:$(GOPATH)/src
+	$(PROTOC) -I $(PROTOSRC_PATH) $(PROTOSRC_PATH)/api/client/client.proto --go_out=plugins=grpc:$(GOPATH)/src
 	@echo "Generating grpc protobuf definitions from pkg/flexvolume/flexvolume.proto"
 	$(PROTOC) -I/usr/local/include -I$(PROTOSRC_PATH) -I$(PROTOS_PATH)/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis --go_out=plugins=grpc:. $(PROTOSRC_PATH)/pkg/flexvolume/flexvolume.proto
 	$(PROTOC) -I/usr/local/include -I$(PROTOSRC_PATH) -I$(PROTOS_PATH)/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis --grpc-gateway_out=logtostderr=true:. $(PROTOSRC_PATH)/pkg/flexvolume/flexvolume.proto
