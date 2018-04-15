@@ -579,3 +579,45 @@ message ActiveRequests {
   int64 RequestCount = 1;
   repeated ActiveRequest ActiveRequest = 2;
 }
+
+// Used to change to api.Node
+message NodeInfo {
+  string id = 1;
+	double cpu = 2;
+	uint64 mem_total = 3;
+	uint64 mem_used = 4;
+	uint64 mem_free = 5;
+	int64 avg_load = 6;
+	openstorage.api.Status status = 7;
+	uint64 gen_number = 8;
+	map<string, openstorage.api.StorageResource> disks = 9;
+	repeated openstorage.api.StoragePool pools = 10;
+	string mgmt_ip = 11;
+	string data_ip = 12;
+  string hostname = 13;
+  map<string, string> node_labels = 14;
+}
+
+// Used to change to api.FluentDConfig
+message FluentDConfig {
+	string ip = 1;
+	string port = 2;
+}
+
+// Used to change to api.TunnelConfig
+message TunnelConfig {
+	string key = 1;
+	string cert = 2;
+	string endpoint = 3;
+}
+
+message ClusterInfo {
+	openstorage.api.Status status = 1;
+	string id = 2;
+	string node_id = 3;
+	repeated NodeInfo nodes_info = 4;
+	string logging_url = 5;
+	string management_url = 6;
+	FluentDConfig fluent_d_config = 7;
+	TunnelConfig tunnel_config = 8;
+}

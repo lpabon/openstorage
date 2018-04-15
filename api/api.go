@@ -121,89 +121,24 @@ const (
 //
 // swagger:model
 type Node struct {
-	// Id of the node.
-	Id string
-	// Cpu usage of the node.
-	Cpu float64 // percentage.
-	// Total Memory of the node
-	MemTotal uint64
-	// Used Memory of the node
-	MemUsed uint64
-	// Free Memory of the node
-	MemFree uint64
-	// Average load (percentage)
-	Avgload int
-	// Node Status see (Status object)
-	Status Status
-	// GenNumber of the node
-	GenNumber uint64
-	// List of disks on this node.
-	Disks map[string]StorageResource
-	// List of storage pools this node supports
-	Pools []StoragePool
-	// Management IP
-	MgmtIp string
-	// Data IP
-	DataIp string
+	NodeInfo
+
 	// Timestamp
 	Timestamp time.Time
 	// Start time of this node
 	StartTime time.Time
-	// Hostname of this node
-	Hostname string
 	// Node data for this node (EX: Public IP, Provider, City..)
 	NodeData map[string]interface{}
-	// User defined labels for node. Key Value pairs
-	NodeLabels map[string]string
-}
-
-// FluentDConfig describes ip and port of a fluentdhost.
-// DEPRECATED
-//
-// swagger:model
-type FluentDConfig struct {
-	IP   string `json:"ip"`
-	Port string `json:"port"`
-}
-
-// TunnelConfig describes key, cert and endpoint of a reverse proxy tunnel
-// DEPRECATED
-//
-// swagger:model
-type TunnelConfig struct {
-	Key      string `json:"key"`
-	Cert     string `json:"cert"`
-	Endpoint string `json:"tunnel_endpoint"`
 }
 
 // Cluster represents the state of the cluster.
 //
 // swagger:model
 type Cluster struct {
-	Status Status
-
-	// Id of the cluster.
-	//
-	// required: true
-	Id string
-
-	// Id of the node on which this cluster object is initialized
-	NodeId string
+	ClusterInfo
 
 	// array of all the nodes in the cluster.
 	Nodes []Node
-
-	// Logging url for the cluster.
-	LoggingURL string
-
-	// Management url for the cluster
-	ManagementURL string
-
-	// FluentD Host for the cluster
-	FluentDConfig FluentDConfig
-
-	// TunnelConfig for the cluster [key, cert, endpoint]
-	TunnelConfig TunnelConfig
 }
 
 // CredCreateRequest is the input for CredCreate command
@@ -216,20 +151,6 @@ type CredCreateRequest struct {
 type CredCreateResponse struct {
 	// UUID of the credential that was just created
 	UUID string
-}
-
-// StatPoint represents the basic structure of a single Stat reported
-// TODO: This is the first step to introduce stats in openstorage.
-//       Follow up task is to introduce an API for logging stats
-type StatPoint struct {
-	// Name of the Stat
-	Name string
-	// Tags for the Stat
-	Tags map[string]string
-	// Fields and values of the stat
-	Fields map[string]interface{}
-	// Timestamp in Unix format
-	Timestamp int64
 }
 
 type CloudBackupCreateRequest struct {

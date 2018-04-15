@@ -408,7 +408,11 @@ func (c *clusterApi) delete(w http.ResponseWriter, r *http.Request) {
 
 	nodes := make([]api.Node, 0)
 	for _, id := range nodeID {
-		nodes = append(nodes, api.Node{Id: id})
+		nodes = append(nodes, api.Node{
+			NodeInfo: api.NodeInfo{
+				Id: id,
+			},
+		})
 	}
 
 	clusterResponse := &api.ClusterResponse{}

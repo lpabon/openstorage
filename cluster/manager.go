@@ -1253,9 +1253,11 @@ func (c *ClusterManager) enumerateNodesFromCache() []api.Node {
 // Enumerate lists all the nodes in the cluster.
 func (c *ClusterManager) Enumerate() (api.Cluster, error) {
 	cluster := api.Cluster{
-		Id:     c.config.ClusterId,
-		Status: c.status,
-		NodeId: c.selfNode.Id,
+		ClusterInfo: api.ClusterInfo{
+			Id:     c.config.ClusterId,
+			Status: c.status,
+			NodeId: c.selfNode.Id,
+		},
 	}
 
 	if c.selfNode.Status == api.Status_STATUS_NOT_IN_QUORUM ||
@@ -1335,7 +1337,8 @@ func (c *ClusterManager) SetSize(size int) error {
 }
 
 func (c *ClusterManager) getNodeInfoFromClusterDb(id string) (api.Node, error) {
-	node := api.Node{Id: id}
+	node := api.Node{}
+	node.Id = id
 	kvdb := kvdb.Instance()
 	kvlock, err := kvdb.LockWithID(clusterLockKey, c.config.NodeId)
 	if err != nil {
