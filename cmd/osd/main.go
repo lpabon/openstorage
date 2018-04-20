@@ -37,6 +37,7 @@ import (
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/api/flexvolume"
 	"github.com/libopenstorage/openstorage/api/server"
+	sdkserver "github.com/libopenstorage/openstorage/api/server/grpc"
 	osdcli "github.com/libopenstorage/openstorage/cli"
 	"github.com/libopenstorage/openstorage/cluster"
 	"github.com/libopenstorage/openstorage/config"
@@ -249,6 +250,18 @@ func start(c *cli.Context) error {
 			return fmt.Errorf("Failed to start CSI server for driver %s: %v", d, err)
 		}
 		csiServer.Start()
+
+		// Start SDK Server
+		sdk, err := sdkserver.NewServer(&sdkserver.ServerConfig{
+			Net:        "unix",
+			Address:    fmt.Sprintf("/var/lib/osd/driver/%s-sdk.sock", d),
+			DriverName: d,
+			Cluster:    cm,
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to start SDK server for driver %s: %v", d, err)
+		}
+		sdk.Start()
 	}
 
 	if cfg.Osd.ClusterConfig.DefaultDriver != "" && !isDefaultSet {

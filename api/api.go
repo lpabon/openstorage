@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/mohae/deepcopy"
 )
 
@@ -612,6 +613,54 @@ func (s *Node) Copy() *Node {
 	localCopy := deepcopy.Copy(*s)
 	nodeCopy := localCopy.(Node)
 	return &nodeCopy
+}
+
+func (s *Node) ToOSNode() *OSNode {
+	osnode := &OSNode{
+		Id:        s.Id,
+		Cpu:       s.Cpu,
+		MemTotal:  s.MemTotal,
+		MemUsed:   s.MemUsed,
+		MemFree:   s.MemFree,
+		AvgLoad:   int64(s.Avgload),
+		Status:    s.Status,
+		GenNumber: s.GenNumber,
+		MgmtIp:    s.MgmtIp,
+		DataIp:    s.DataIp,
+		Hostname:  s.Hostname,
+	}
+
+	osnode.Timestamp, _ = ptypes.TimestampProto(s.Timestamp)
+	osnode.StartTime, _ = ptypes.TimestampProto(s.StartTime)
+
+	osnode.Disks = make(map[string]*StorageResource)
+	for k, v := range s.Disks {
+		osnode.Disks[k] = &v
+	}
+
+	osnode.Pools = make([]*StoragePool, len(s.Pools))
+	for i, v := range s.Pools {
+		osnode.Pools[i] = &v
+	}
+
+	return osnode
+}
+
+func (c *Cluster) ToOSCluster() *OSCluster {
+	oscluster := &OSCluster{
+		Status:        c.Status,
+		Id:            c.Id,
+		NodeId:        c.NodeId,
+		LoggingUrl:    c.LoggingURL,
+		ManagementUrl: c.ManagementURL,
+	}
+
+	oscluster.Nodes = make([]*OSNode, len(c.Nodes))
+	for i, v := range c.Nodes {
+		oscluster.Nodes[i] = v.ToOSNode()
+	}
+
+	return oscluster
 }
 
 func (v Volume) IsClone() bool {
