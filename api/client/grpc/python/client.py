@@ -2,7 +2,11 @@
 # source sdk/bin/activate
 # pip install grpcio grpcio-tools
 #
-# python -m grpc_tools.protoc -I../../../../api --python_out=. --grpc_python_out=. ../../../../api/api.proto
+# Create python bindings:
+#   python -m grpc_tools.protoc -I../../../../api --python_out=. --grpc_python_out=. ../../../../api/api.proto
+#
+# Run:
+#   sudo -E bash -c "source sdk/bin/activate && python client.py"
 #
 # More info: https://grpc.io/docs/quickstart/python.html
 #
