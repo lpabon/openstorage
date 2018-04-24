@@ -107,6 +107,22 @@ docs:
 	go generate ./cmd/osd/main.go
 	swagger validate api/swagger/swagger.json
 
+generate-mockfiles:
+	go generate $(PKGS)
+
+generate: docs generate-mockfiles
+
+docker-build-mock-sdk-server:
+	rm -rf _tmp
+	mkdir -p _tmp
+	CGO_ENABLED=0 GOOS=linux go build \
+				-a -ldflags '-extldflags "-static"' \
+				-tags "$(TAGS)" \
+				-o ./_tmp/osd \
+				./cmd/osd
+	docker build -t openstorage/mock-sdk-server -f Dockerfile.sdk .
+	rm -rf _tmp
+
 docker-build-osd-dev:
 	docker build -t openstorage/osd-dev -f Dockerfile.osd-dev .
 
