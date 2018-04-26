@@ -39,9 +39,7 @@ module Openstorage
         self.service_name = 'openstorage.api.OpenStorageVolume'
 
         # Creates a volume
-        rpc :Create, VolumeCreateRequest, VolumeCreateResponse
-        # CreateSimpleVolume provides a simple API to create a volume
-        rpc :CreateSimpleVolume, VolumeCreateSimpleVolumeRequest, VolumeCreateResponse
+        rpc :Create, OpenStorageVolumeCreateRequest, OpenStorageVolumeCreateResponse
         # Delete a volume
         rpc :Delete, VolumeDeleteRequest, VolumeDeleteResponse
         # Get information on a volume

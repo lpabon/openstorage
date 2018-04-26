@@ -30,34 +30,44 @@ import (
 // Create creates a volume
 func (s *VolumeServer) Create(
 	ctx context.Context,
-	req *api.VolumeCreateRequest,
-) (*api.VolumeCreateResponse, error) {
+	req *api.OpenStorageVolumeCreateRequest,
+) (*api.OpenStorageVolumeCreateResponse, error) {
 
-	if req.GetLocator() == nil {
+	if len(req.GetName()) == 0 {
 		return nil, status.Error(
 			codes.InvalidArgument,
-			"Must supply a locator object")
-	} else if len(req.GetLocator().GetName()) == 0 {
+			"Must supply a unique name")
+	} else if req.GetSize() <= 0 {
 		return nil, status.Error(
 			codes.InvalidArgument,
-			"Must supply a unique name in locator")
-	} else if req.GetSource() == nil {
+			"Size cannot be zero or negative")
+	} else if req.GetReplicaCount() <= 0 || req.GetReplicaCount() > 3 {
 		return nil, status.Error(
 			codes.InvalidArgument,
-			"Must supply source object")
-	} else if req.GetSpec() == nil {
+			"Replica count must be between 1 and 3 inclusive")
+	} else if req.GetEncrypted() && len(req.GetPassphrase()) == 0 {
 		return nil, status.Error(
 			codes.InvalidArgument,
-			"Must supply spec object")
+			"Must provide a passphrase to create an encrypted volume")
 	}
 
-	locator := req.GetLocator()
-	spec := req.GetSpec()
-	source := req.GetSource()
-	volName := locator.GetName()
+	locator := &api.VolumeLocator{
+		Name: req.GetName(),
+	}
+	spec := &api.VolumeSpec{
+		Size:         uint64(req.GetSize()),
+		Shared:       req.GetShared(),
+		Encrypted:    req.GetEncrypted(),
+		Passphrase:   req.GetPassphrase(),
+		HaLevel:      req.GetReplicaCount(),
+		VolumeLabels: req.GetLabels(),
+	}
+	source := &api.Source{
+		Parent: req.GetParent(),
+	}
 
 	// Check if the volume has already been created or is in process of creation
-	v, err := util.VolumeFromName(s.driver, volName)
+	v, err := util.VolumeFromName(s.driver, req.GetName())
 	if err == nil {
 		// Check the requested arguments match that of the existing volume
 		if spec.Size != v.GetSpec().GetSize() {
@@ -67,26 +77,26 @@ func (s *VolumeServer) Create(
 				v.GetSpec().GetSize(),
 				spec.Size)
 		}
-		if v.GetSpec().GetShared() != req.GetSpec().GetShared() {
+		if v.GetSpec().GetShared() != req.GetShared() {
 			return nil, status.Errorf(
 				codes.AlreadyExists,
 				"Existing volume has shared=%v while request is asking for shared=%v",
 				v.GetSpec().GetShared(),
-				req.GetSpec().GetShared())
+				req.GetShared())
 		}
 		if v.GetSource().GetParent() != source.GetParent() {
 			return nil, status.Error(codes.AlreadyExists, "Existing volume has conflicting parent value")
 		}
 
 		// Return information on existing volume
-		return &api.VolumeCreateResponse{
-			Id: v.GetId(),
+		return &api.OpenStorageVolumeCreateResponse{
+			VolumeId: v.GetId(),
 		}, nil
 	}
 
 	// Check if the caller is asking to create a snapshot or for a new volume
 	var id string
-	if source != nil && len(source.GetParent()) != 0 {
+	if len(source.GetParent()) != 0 {
 		// Get parent volume information
 		parent, err := util.VolumeFromName(s.driver, source.Parent)
 		if err != nil {
@@ -98,7 +108,7 @@ func (s *VolumeServer) Create(
 
 		// Create a snapshot from the parent
 		id, err = s.driver.Snapshot(parent.GetId(), false, &api.VolumeLocator{
-			Name: volName,
+			Name: req.GetName(),
 		})
 		if err != nil {
 			return nil, status.Errorf(
@@ -117,34 +127,10 @@ func (s *VolumeServer) Create(
 		}
 	}
 
-	return &api.VolumeCreateResponse{
-		Id: id,
+	return &api.OpenStorageVolumeCreateResponse{
+		VolumeId: id,
 	}, nil
-}
 
-// CreateSimpleVolume provides a simple API to create a volume
-func (s *VolumeServer) CreateSimpleVolume(
-	ctx context.Context,
-	req *api.VolumeCreateSimpleVolumeRequest,
-) (*api.VolumeCreateResponse, error) {
-
-	// Generate objects from the parameters passed in
-	spec, locator, source, err := s.specHandler.SpecFromOpts(req.GetParameters())
-	if err != nil {
-		return nil, status.Errorf(
-			codes.InvalidArgument,
-			"Unable to get parameters: %s\n",
-			err.Error())
-	}
-	locator.Name = req.GetName()
-	spec.Size = uint64(req.GetSize())
-
-	// Create volume
-	return s.Create(ctx, &api.VolumeCreateRequest{
-		Locator: locator,
-		Source:  source,
-		Spec:    spec,
-	})
 }
 
 // Delete deletes a volume

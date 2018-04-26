@@ -668,12 +668,8 @@ service OpenStorageCluster {
 
 service OpenStorageVolume {
   // Creates a volume
-  rpc Create(VolumeCreateRequest)
-    returns (VolumeCreateResponse) {}
-
-  // CreateSimpleVolume provides a simple API to create a volume
-  rpc CreateSimpleVolume(VolumeCreateSimpleVolumeRequest)
-    returns (VolumeCreateResponse) {}
+  rpc Create(OpenStorageVolumeCreateRequest)
+    returns (OpenStorageVolumeCreateResponse) {}
 
   // Delete a volume
   rpc Delete(VolumeDeleteRequest)
@@ -688,13 +684,28 @@ service OpenStorageVolume {
     returns (VolumeEnumerateResponse) {}
 }
 
-message VolumeCreateSimpleVolumeRequest {
+message OpenStorageVolumeCreateRequest {
   // Unique name of the volume. This will be used for idempotency.
   string name = 1;
   // Size of the volume
   int64 size = 2;
-  // Parameters set according to the driver
-  map<string, string> parameters = 3;
+  // True for shared volumes, false for block volumes
+  bool shared = 3;
+  // True to create an encrypted volume. Requires _passphrase_
+  bool encrypted = 4;
+  // Passphrase for an encrypted volume. Required if encrypted.
+  string passphrase = 5;
+  // Number of replicas or copies
+  int64 replica_count = 6;
+  // Parent volume id, if specified will create a new volume as a clone of the parent.
+  string parent = 7;
+  // Labels to apply to the volume
+  map<string, string> labels = 8;
+}
+
+message OpenStorageVolumeCreateResponse {
+  // Id of volume created
+  string volume_id = 1;
 }
 
 message VolumeDeleteRequest {

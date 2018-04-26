@@ -215,10 +215,18 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
     optional :node_id, :string, 3
     repeated :nodes, :message, 4, "openstorage.api.StorageNode"
   end
-  add_message "openstorage.api.VolumeCreateSimpleVolumeRequest" do
+  add_message "openstorage.api.OpenStorageVolumeCreateRequest" do
     optional :name, :string, 1
     optional :size, :int64, 2
-    map :parameters, :string, :string, 3
+    optional :shared, :bool, 3
+    optional :encrypted, :bool, 4
+    optional :passphrase, :string, 5
+    optional :replica_count, :int64, 6
+    optional :parent, :string, 7
+    map :labels, :string, :string, 8
+  end
+  add_message "openstorage.api.OpenStorageVolumeCreateResponse" do
+    optional :volume_id, :string, 1
   end
   add_message "openstorage.api.VolumeDeleteRequest" do
     optional :volume_id, :string, 1
@@ -417,7 +425,8 @@ module Openstorage
     GroupSnapCreateResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.GroupSnapCreateResponse").msgclass
     StorageNode = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.StorageNode").msgclass
     StorageCluster = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.StorageCluster").msgclass
-    VolumeCreateSimpleVolumeRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeCreateSimpleVolumeRequest").msgclass
+    OpenStorageVolumeCreateRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.OpenStorageVolumeCreateRequest").msgclass
+    OpenStorageVolumeCreateResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.OpenStorageVolumeCreateResponse").msgclass
     VolumeDeleteRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeDeleteRequest").msgclass
     VolumeDeleteResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeDeleteResponse").msgclass
     VolumeInspectRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeInspectRequest").msgclass

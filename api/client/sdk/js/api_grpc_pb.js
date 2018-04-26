@@ -115,37 +115,26 @@ function deserialize_openstorage_api_ClusterInspectResponse(buffer_arg) {
   return api_pb.ClusterInspectResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_openstorage_api_VolumeCreateRequest(arg) {
-  if (!(arg instanceof api_pb.VolumeCreateRequest)) {
-    throw new Error('Expected argument of type openstorage.api.VolumeCreateRequest');
+function serialize_openstorage_api_OpenStorageVolumeCreateRequest(arg) {
+  if (!(arg instanceof api_pb.OpenStorageVolumeCreateRequest)) {
+    throw new Error('Expected argument of type openstorage.api.OpenStorageVolumeCreateRequest');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_openstorage_api_VolumeCreateRequest(buffer_arg) {
-  return api_pb.VolumeCreateRequest.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_openstorage_api_OpenStorageVolumeCreateRequest(buffer_arg) {
+  return api_pb.OpenStorageVolumeCreateRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_openstorage_api_VolumeCreateResponse(arg) {
-  if (!(arg instanceof api_pb.VolumeCreateResponse)) {
-    throw new Error('Expected argument of type openstorage.api.VolumeCreateResponse');
+function serialize_openstorage_api_OpenStorageVolumeCreateResponse(arg) {
+  if (!(arg instanceof api_pb.OpenStorageVolumeCreateResponse)) {
+    throw new Error('Expected argument of type openstorage.api.OpenStorageVolumeCreateResponse');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_openstorage_api_VolumeCreateResponse(buffer_arg) {
-  return api_pb.VolumeCreateResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_openstorage_api_VolumeCreateSimpleVolumeRequest(arg) {
-  if (!(arg instanceof api_pb.VolumeCreateSimpleVolumeRequest)) {
-    throw new Error('Expected argument of type openstorage.api.VolumeCreateSimpleVolumeRequest');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_openstorage_api_VolumeCreateSimpleVolumeRequest(buffer_arg) {
-  return api_pb.VolumeCreateSimpleVolumeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_openstorage_api_OpenStorageVolumeCreateResponse(buffer_arg) {
+  return api_pb.OpenStorageVolumeCreateResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_openstorage_api_VolumeDeleteRequest(arg) {
@@ -285,24 +274,12 @@ var OpenStorageVolumeService = exports.OpenStorageVolumeService = {
     path: '/openstorage.api.OpenStorageVolume/Create',
     requestStream: false,
     responseStream: false,
-    requestType: api_pb.VolumeCreateRequest,
-    responseType: api_pb.VolumeCreateResponse,
-    requestSerialize: serialize_openstorage_api_VolumeCreateRequest,
-    requestDeserialize: deserialize_openstorage_api_VolumeCreateRequest,
-    responseSerialize: serialize_openstorage_api_VolumeCreateResponse,
-    responseDeserialize: deserialize_openstorage_api_VolumeCreateResponse,
-  },
-  // CreateSimpleVolume provides a simple API to create a volume
-  createSimpleVolume: {
-    path: '/openstorage.api.OpenStorageVolume/CreateSimpleVolume',
-    requestStream: false,
-    responseStream: false,
-    requestType: api_pb.VolumeCreateSimpleVolumeRequest,
-    responseType: api_pb.VolumeCreateResponse,
-    requestSerialize: serialize_openstorage_api_VolumeCreateSimpleVolumeRequest,
-    requestDeserialize: deserialize_openstorage_api_VolumeCreateSimpleVolumeRequest,
-    responseSerialize: serialize_openstorage_api_VolumeCreateResponse,
-    responseDeserialize: deserialize_openstorage_api_VolumeCreateResponse,
+    requestType: api_pb.OpenStorageVolumeCreateRequest,
+    responseType: api_pb.OpenStorageVolumeCreateResponse,
+    requestSerialize: serialize_openstorage_api_OpenStorageVolumeCreateRequest,
+    requestDeserialize: deserialize_openstorage_api_OpenStorageVolumeCreateRequest,
+    responseSerialize: serialize_openstorage_api_OpenStorageVolumeCreateResponse,
+    responseDeserialize: deserialize_openstorage_api_OpenStorageVolumeCreateResponse,
   },
   // Delete a volume
   delete: {

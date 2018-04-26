@@ -126,13 +126,8 @@ class OpenStorageVolumeStub(object):
     """
     self.Create = channel.unary_unary(
         '/openstorage.api.OpenStorageVolume/Create',
-        request_serializer=api__pb2.VolumeCreateRequest.SerializeToString,
-        response_deserializer=api__pb2.VolumeCreateResponse.FromString,
-        )
-    self.CreateSimpleVolume = channel.unary_unary(
-        '/openstorage.api.OpenStorageVolume/CreateSimpleVolume',
-        request_serializer=api__pb2.VolumeCreateSimpleVolumeRequest.SerializeToString,
-        response_deserializer=api__pb2.VolumeCreateResponse.FromString,
+        request_serializer=api__pb2.OpenStorageVolumeCreateRequest.SerializeToString,
+        response_deserializer=api__pb2.OpenStorageVolumeCreateResponse.FromString,
         )
     self.Delete = channel.unary_unary(
         '/openstorage.api.OpenStorageVolume/Delete',
@@ -157,13 +152,6 @@ class OpenStorageVolumeServicer(object):
 
   def Create(self, request, context):
     """Creates a volume
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
-
-  def CreateSimpleVolume(self, request, context):
-    """CreateSimpleVolume provides a simple API to create a volume
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
@@ -195,13 +183,8 @@ def add_OpenStorageVolumeServicer_to_server(servicer, server):
   rpc_method_handlers = {
       'Create': grpc.unary_unary_rpc_method_handler(
           servicer.Create,
-          request_deserializer=api__pb2.VolumeCreateRequest.FromString,
-          response_serializer=api__pb2.VolumeCreateResponse.SerializeToString,
-      ),
-      'CreateSimpleVolume': grpc.unary_unary_rpc_method_handler(
-          servicer.CreateSimpleVolume,
-          request_deserializer=api__pb2.VolumeCreateSimpleVolumeRequest.FromString,
-          response_serializer=api__pb2.VolumeCreateResponse.SerializeToString,
+          request_deserializer=api__pb2.OpenStorageVolumeCreateRequest.FromString,
+          response_serializer=api__pb2.OpenStorageVolumeCreateResponse.SerializeToString,
       ),
       'Delete': grpc.unary_unary_rpc_method_handler(
           servicer.Delete,
