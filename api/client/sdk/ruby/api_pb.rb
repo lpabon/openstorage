@@ -215,6 +215,28 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
     optional :node_id, :string, 3
     repeated :nodes, :message, 4, "openstorage.api.StorageNode"
   end
+  add_message "openstorage.api.VolumeCreateSimpleVolumeRequest" do
+    optional :name, :string, 1
+    optional :size, :int64, 2
+    map :parameters, :string, :string, 3
+  end
+  add_message "openstorage.api.VolumeDeleteRequest" do
+    optional :volume_id, :string, 1
+  end
+  add_message "openstorage.api.VolumeDeleteResponse" do
+  end
+  add_message "openstorage.api.VolumeInspectRequest" do
+    optional :volume_id, :string, 1
+  end
+  add_message "openstorage.api.VolumeInspectResponse" do
+    optional :volume, :message, 1, "openstorage.api.Volume"
+  end
+  add_message "openstorage.api.VolumeEnumerateRequest" do
+    optional :locator, :message, 1, "openstorage.api.VolumeLocator"
+  end
+  add_message "openstorage.api.VolumeEnumerateResponse" do
+    repeated :volumes, :message, 1, "openstorage.api.Volume"
+  end
   add_message "openstorage.api.ClusterEnumerateRequest" do
   end
   add_message "openstorage.api.ClusterEnumerateResponse" do
@@ -225,6 +247,26 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
   end
   add_message "openstorage.api.ClusterInspectResponse" do
     optional :node, :message, 1, "openstorage.api.StorageNode"
+  end
+  add_message "openstorage.api.ClusterAlertEnumerateRequest" do
+    optional :time_start, :message, 1, "google.protobuf.Timestamp"
+    optional :time_end, :message, 2, "google.protobuf.Timestamp"
+    optional :resource, :enum, 3, "openstorage.api.ResourceType"
+  end
+  add_message "openstorage.api.ClusterAlertEnumerateResponse" do
+    optional :alerts, :message, 1, "openstorage.api.Alerts"
+  end
+  add_message "openstorage.api.ClusterAlertClearRequest" do
+    optional :resource, :enum, 1, "openstorage.api.ResourceType"
+    optional :alert_id, :int64, 2
+  end
+  add_message "openstorage.api.ClusterAlertClearResponse" do
+  end
+  add_message "openstorage.api.ClusterAlertEraseRequest" do
+    optional :resource, :enum, 1, "openstorage.api.ResourceType"
+    optional :alert_id, :int64, 2
+  end
+  add_message "openstorage.api.ClusterAlertEraseResponse" do
   end
   add_enum "openstorage.api.Status" do
     value :STATUS_NONE, 0
@@ -375,10 +417,23 @@ module Openstorage
     GroupSnapCreateResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.GroupSnapCreateResponse").msgclass
     StorageNode = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.StorageNode").msgclass
     StorageCluster = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.StorageCluster").msgclass
+    VolumeCreateSimpleVolumeRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeCreateSimpleVolumeRequest").msgclass
+    VolumeDeleteRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeDeleteRequest").msgclass
+    VolumeDeleteResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeDeleteResponse").msgclass
+    VolumeInspectRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeInspectRequest").msgclass
+    VolumeInspectResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeInspectResponse").msgclass
+    VolumeEnumerateRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeEnumerateRequest").msgclass
+    VolumeEnumerateResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeEnumerateResponse").msgclass
     ClusterEnumerateRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ClusterEnumerateRequest").msgclass
     ClusterEnumerateResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ClusterEnumerateResponse").msgclass
     ClusterInspectRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ClusterInspectRequest").msgclass
     ClusterInspectResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ClusterInspectResponse").msgclass
+    ClusterAlertEnumerateRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ClusterAlertEnumerateRequest").msgclass
+    ClusterAlertEnumerateResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ClusterAlertEnumerateResponse").msgclass
+    ClusterAlertClearRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ClusterAlertClearRequest").msgclass
+    ClusterAlertClearResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ClusterAlertClearResponse").msgclass
+    ClusterAlertEraseRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ClusterAlertEraseRequest").msgclass
+    ClusterAlertEraseResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ClusterAlertEraseResponse").msgclass
     Status = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.Status").enummodule
     DriverType = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.DriverType").enummodule
     FSType = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.FSType").enummodule
