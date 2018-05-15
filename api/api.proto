@@ -803,6 +803,109 @@ service OpenStorageVolume {
     }
 }
 
+service OpenStorageCredentials {
+  // Create and store credentials
+  rpc CreateForAWS(CredentialsCreateForAwsRequest)
+      returns (CredentialsCreateForAwsResponse) {
+      option(google.api.http) = {
+        post: "/v1/credentials/create/aws"
+        body: "*"
+      };
+    }
+
+  // Create and store credentials
+  rpc CreateForAzure(CredentialsCreateForAzureRequest)
+      returns (CredentialsCreateForAzureResponse) {
+      option(google.api.http) = {
+        post: "/v1/credentials/create/azure"
+        body: "*"
+      };
+    }
+
+  // Create and store credentials
+  rpc CreateForGoogle(CredentialsCreateForGoogleRequest)
+      returns (CredentialsCreateForGoogleResponse) {
+      option(google.api.http) = {
+        post: "/v1/credentials/create/google"
+        body: "*"
+      };
+    }
+
+  // Delete stored credentials
+  rpc Delete(CredentialsDeleteRequest)
+      returns (CredentialsDeleteResponse) {
+      option(google.api.http) = {
+        post: "/v1/credentials/delete"
+        body: "*"
+      };
+    }
+
+  // Validate a specified credential
+  rpc Validate(CredentialsValidateRequest)
+      returns (CredentialsValidateResponse) {
+      option(google.api.http) = {
+        post: "/v1/credentials/validate"
+        body: "*"
+      };
+    }
+}
+
+message CredentialsCreateForAzureRequest {
+  // Account name
+  string account_name = 1;
+  // Account key
+  string account_key = 2;
+}
+
+message CredentialsCreateForAzureResponse {
+  // Id of the credentials
+  string credential_id = 1;
+}
+
+message CredentialsCreateForGoogleRequest {
+  // Project ID
+  string project_id = 1;
+  // JSON Key
+  string json_key = 2;
+}
+
+message CredentialsCreateForGoogleResponse {
+  // Id of the credentials
+  string credential_id = 1;
+}
+
+message CredentialsCreateForAwsRequest {
+  // Access key
+  string access_key = 1;
+  // Secret key
+  string secret_key = 2;
+  // Endpoint
+  string endpoint = 3;
+  // Region
+  string region = 4;
+}
+
+message CredentialsCreateForAwsResponse {
+  // Id of the credentials
+  string credential_id = 1;
+}
+
+message CredentialsDeleteRequest {
+  // Id of the credentials
+  string credential_id = 1;
+}
+
+message CredentialsDeleteResponse {
+}
+
+message CredentialsValidateRequest {
+  // Id of the credentials
+  string credential_id = 1;
+}
+
+message CredentialsValidateResponse {
+}
+
 message VolumeMountRequest {
   // Id of the volume
   string volume_id = 1;
