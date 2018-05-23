@@ -793,7 +793,7 @@ service OpenStorageVolume {
       };
     }
 
-  // Unmount volume at specified path                                           
+  // Unmount volume at specified path
   rpc Unmount(VolumeUnmountRequest)                                             
       returns (VolumeUnmountResponse) {                                         
       option(google.api.http) = {                                               
@@ -804,16 +804,18 @@ service OpenStorageVolume {
 }
 
 service OpenStorageCredentials {
-  // Create and store credentials
-  rpc CreateForAWS(CredentialsCreateForAwsRequest)
+  // Provide credentials to OpenStorage and if valid,
+  // it will return an identifier to the credentials
+  rpc ProvideForAWS(CredentialsCreateForAwsRequest)
       returns (CredentialsCreateForAwsResponse) {
       option(google.api.http) = {
-        post: "/v1/credentials/create/aws"
+        post: "/v1/credentials/provide/aws"
         body: "*"
       };
     }
 
   // Create and store credentials
+  // Change like ProvideForAWS
   rpc CreateForAzure(CredentialsCreateForAzureRequest)
       returns (CredentialsCreateForAzureResponse) {
       option(google.api.http) = {
@@ -823,10 +825,19 @@ service OpenStorageCredentials {
     }
 
   // Create and store credentials
+  // Change like ProvideForAWS
   rpc CreateForGoogle(CredentialsCreateForGoogleRequest)
       returns (CredentialsCreateForGoogleResponse) {
       option(google.api.http) = {
         post: "/v1/credentials/create/google"
+        body: "*"
+      };
+    }
+
+  rpc EnumerateForGoogle(CredentialsEnumerateForGoogleRequest)
+      returns (CredentialsEnumerateForGoogleResponse) {
+      option(google.api.http) = {
+        post: "/v1/credentials/enumerate/google"
         body: "*"
       };
     }
