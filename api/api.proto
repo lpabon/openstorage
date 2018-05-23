@@ -806,8 +806,8 @@ service OpenStorageVolume {
 service OpenStorageCredentials {
   // Provide credentials to OpenStorage and if valid,
   // it will return an identifier to the credentials
-  rpc ProvideForAWS(CredentialsCreateForAwsRequest)
-      returns (CredentialsCreateForAwsResponse) {
+  rpc ProvideForAWS(CredentialsProvideForAwsRequest)
+      returns (CredentialsProvideForAwsResponse) {
       option(google.api.http) = {
         post: "/v1/credentials/provide/aws"
         body: "*"
