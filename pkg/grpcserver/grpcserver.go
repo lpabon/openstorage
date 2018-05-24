@@ -17,6 +17,7 @@ limitations under the License.
 package grpcserver
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 	"sync"
@@ -29,9 +30,10 @@ import (
 // GrpcServerConfig provides the configuration to the
 // the gRPC server created by NewGrpcServer()
 type GrpcServerConfig struct {
-	Name    string
-	Net     string
-	Address string
+	Name      string
+	Net       string
+	Address   string
+	TlsConfig *tls.Config
 }
 
 // GrpcServer is a server manager for gRPC implementations
@@ -80,8 +82,18 @@ func (s *GrpcServer) Start(register func(grpcServer *grpc.Server)) error {
 		return fmt.Errorf("Server already running")
 	}
 
-	s.server = grpc.NewServer()
+	var opts []grpc.ServerOption
+	if s.TlsConfig != nil {
+		creds := credentials.NewTLS(s.TlsConfig)
+		opts = append(opts, grpc.Creds(creds))
+	}
+	s.server = grpc.NewServer(opts...)
+
+	// Call the caller's closure for registration of gRPC handlers
 	register(s.server)
+
+	// Provide reflection which makes it simple for gRPC generic tools
+	// to communicate with the server
 	reflection.Register(s.server)
 
 	// Start listening for requests
