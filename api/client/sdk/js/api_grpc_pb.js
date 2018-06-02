@@ -116,6 +116,182 @@ function deserialize_openstorage_api_ClusterInspectResponse(buffer_arg) {
   return api_pb.ClusterInspectResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_openstorage_api_CredentialCreateAWSRequest(arg) {
+  if (!(arg instanceof api_pb.CredentialCreateAWSRequest)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialCreateAWSRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialCreateAWSRequest(buffer_arg) {
+  return api_pb.CredentialCreateAWSRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialCreateAWSResponse(arg) {
+  if (!(arg instanceof api_pb.CredentialCreateAWSResponse)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialCreateAWSResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialCreateAWSResponse(buffer_arg) {
+  return api_pb.CredentialCreateAWSResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialCreateAzureRequest(arg) {
+  if (!(arg instanceof api_pb.CredentialCreateAzureRequest)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialCreateAzureRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialCreateAzureRequest(buffer_arg) {
+  return api_pb.CredentialCreateAzureRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialCreateAzureResponse(arg) {
+  if (!(arg instanceof api_pb.CredentialCreateAzureResponse)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialCreateAzureResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialCreateAzureResponse(buffer_arg) {
+  return api_pb.CredentialCreateAzureResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialCreateGoogleRequest(arg) {
+  if (!(arg instanceof api_pb.CredentialCreateGoogleRequest)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialCreateGoogleRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialCreateGoogleRequest(buffer_arg) {
+  return api_pb.CredentialCreateGoogleRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialCreateGoogleResponse(arg) {
+  if (!(arg instanceof api_pb.CredentialCreateGoogleResponse)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialCreateGoogleResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialCreateGoogleResponse(buffer_arg) {
+  return api_pb.CredentialCreateGoogleResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialDeleteRequest(arg) {
+  if (!(arg instanceof api_pb.CredentialDeleteRequest)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialDeleteRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialDeleteRequest(buffer_arg) {
+  return api_pb.CredentialDeleteRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialDeleteResponse(arg) {
+  if (!(arg instanceof api_pb.CredentialDeleteResponse)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialDeleteResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialDeleteResponse(buffer_arg) {
+  return api_pb.CredentialDeleteResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialEnumerateAWSRequest(arg) {
+  if (!(arg instanceof api_pb.CredentialEnumerateAWSRequest)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialEnumerateAWSRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialEnumerateAWSRequest(buffer_arg) {
+  return api_pb.CredentialEnumerateAWSRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialEnumerateAWSResponse(arg) {
+  if (!(arg instanceof api_pb.CredentialEnumerateAWSResponse)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialEnumerateAWSResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialEnumerateAWSResponse(buffer_arg) {
+  return api_pb.CredentialEnumerateAWSResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialEnumerateAzureRequest(arg) {
+  if (!(arg instanceof api_pb.CredentialEnumerateAzureRequest)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialEnumerateAzureRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialEnumerateAzureRequest(buffer_arg) {
+  return api_pb.CredentialEnumerateAzureRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialEnumerateAzureResponse(arg) {
+  if (!(arg instanceof api_pb.CredentialEnumerateAzureResponse)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialEnumerateAzureResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialEnumerateAzureResponse(buffer_arg) {
+  return api_pb.CredentialEnumerateAzureResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialEnumerateGoogleRequest(arg) {
+  if (!(arg instanceof api_pb.CredentialEnumerateGoogleRequest)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialEnumerateGoogleRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialEnumerateGoogleRequest(buffer_arg) {
+  return api_pb.CredentialEnumerateGoogleRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialEnumerateGoogleResponse(arg) {
+  if (!(arg instanceof api_pb.CredentialEnumerateGoogleResponse)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialEnumerateGoogleResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialEnumerateGoogleResponse(buffer_arg) {
+  return api_pb.CredentialEnumerateGoogleResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialValidateRequest(arg) {
+  if (!(arg instanceof api_pb.CredentialValidateRequest)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialValidateRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialValidateRequest(buffer_arg) {
+  return api_pb.CredentialValidateRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_openstorage_api_CredentialValidateResponse(arg) {
+  if (!(arg instanceof api_pb.CredentialValidateResponse)) {
+    throw new Error('Expected argument of type openstorage.api.CredentialValidateResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_openstorage_api_CredentialValidateResponse(buffer_arg) {
+  return api_pb.CredentialValidateResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_openstorage_api_OpenStorageVolumeCreateRequest(arg) {
   if (!(arg instanceof api_pb.OpenStorageVolumeCreateRequest)) {
     throw new Error('Expected argument of type openstorage.api.OpenStorageVolumeCreateRequest');
@@ -594,3 +770,109 @@ var OpenStorageVolumeService = exports.OpenStorageVolumeService = {
 };
 
 exports.OpenStorageVolumeClient = grpc.makeGenericClientConstructor(OpenStorageVolumeService);
+var OpenStorageCredentialsService = exports.OpenStorageCredentialsService = {
+  // Provide credentials to OpenStorage and if valid,
+  // it will return an identifier to the credentials
+  //
+  // Create credential for AWS S3 and if valid ,
+  // returns a unique identifier
+  createForAWS: {
+    path: '/openstorage.api.OpenStorageCredentials/CreateForAWS',
+    requestStream: false,
+    responseStream: false,
+    requestType: api_pb.CredentialCreateAWSRequest,
+    responseType: api_pb.CredentialCreateAWSResponse,
+    requestSerialize: serialize_openstorage_api_CredentialCreateAWSRequest,
+    requestDeserialize: deserialize_openstorage_api_CredentialCreateAWSRequest,
+    responseSerialize: serialize_openstorage_api_CredentialCreateAWSResponse,
+    responseDeserialize: deserialize_openstorage_api_CredentialCreateAWSResponse,
+  },
+  // Create credential for Azure and if valid ,
+  // returns a unique identifier
+  createForAzure: {
+    path: '/openstorage.api.OpenStorageCredentials/CreateForAzure',
+    requestStream: false,
+    responseStream: false,
+    requestType: api_pb.CredentialCreateAzureRequest,
+    responseType: api_pb.CredentialCreateAzureResponse,
+    requestSerialize: serialize_openstorage_api_CredentialCreateAzureRequest,
+    requestDeserialize: deserialize_openstorage_api_CredentialCreateAzureRequest,
+    responseSerialize: serialize_openstorage_api_CredentialCreateAzureResponse,
+    responseDeserialize: deserialize_openstorage_api_CredentialCreateAzureResponse,
+  },
+  // Create credential for Google and if valid ,
+  // returns a unique identifier
+  createForGoogle: {
+    path: '/openstorage.api.OpenStorageCredentials/CreateForGoogle',
+    requestStream: false,
+    responseStream: false,
+    requestType: api_pb.CredentialCreateGoogleRequest,
+    responseType: api_pb.CredentialCreateGoogleResponse,
+    requestSerialize: serialize_openstorage_api_CredentialCreateGoogleRequest,
+    requestDeserialize: deserialize_openstorage_api_CredentialCreateGoogleRequest,
+    responseSerialize: serialize_openstorage_api_CredentialCreateGoogleResponse,
+    responseDeserialize: deserialize_openstorage_api_CredentialCreateGoogleResponse,
+  },
+  // EnumerateForAWS lists the configured AWS credentials                      
+  enumerateForAWS: {
+    path: '/openstorage.api.OpenStorageCredentials/EnumerateForAWS',
+    requestStream: false,
+    responseStream: false,
+    requestType: api_pb.CredentialEnumerateAWSRequest,
+    responseType: api_pb.CredentialEnumerateAWSResponse,
+    requestSerialize: serialize_openstorage_api_CredentialEnumerateAWSRequest,
+    requestDeserialize: deserialize_openstorage_api_CredentialEnumerateAWSRequest,
+    responseSerialize: serialize_openstorage_api_CredentialEnumerateAWSResponse,
+    responseDeserialize: deserialize_openstorage_api_CredentialEnumerateAWSResponse,
+  },
+  // EnumerateForAzure lists the configured Azure credentials                  
+  enumerateForAzure: {
+    path: '/openstorage.api.OpenStorageCredentials/EnumerateForAzure',
+    requestStream: false,
+    responseStream: false,
+    requestType: api_pb.CredentialEnumerateAzureRequest,
+    responseType: api_pb.CredentialEnumerateAzureResponse,
+    requestSerialize: serialize_openstorage_api_CredentialEnumerateAzureRequest,
+    requestDeserialize: deserialize_openstorage_api_CredentialEnumerateAzureRequest,
+    responseSerialize: serialize_openstorage_api_CredentialEnumerateAzureResponse,
+    responseDeserialize: deserialize_openstorage_api_CredentialEnumerateAzureResponse,
+  },
+  // EnumerateForGoogle lists the configured Google credentials                
+  enumerateForGoogle: {
+    path: '/openstorage.api.OpenStorageCredentials/EnumerateForGoogle',
+    requestStream: false,
+    responseStream: false,
+    requestType: api_pb.CredentialEnumerateGoogleRequest,
+    responseType: api_pb.CredentialEnumerateGoogleResponse,
+    requestSerialize: serialize_openstorage_api_CredentialEnumerateGoogleRequest,
+    requestDeserialize: deserialize_openstorage_api_CredentialEnumerateGoogleRequest,
+    responseSerialize: serialize_openstorage_api_CredentialEnumerateGoogleResponse,
+    responseDeserialize: deserialize_openstorage_api_CredentialEnumerateGoogleResponse,
+  },
+  // Delete a specified credential                                                 
+  credentialDelete: {
+    path: '/openstorage.api.OpenStorageCredentials/CredentialDelete',
+    requestStream: false,
+    responseStream: false,
+    requestType: api_pb.CredentialDeleteRequest,
+    responseType: api_pb.CredentialDeleteResponse,
+    requestSerialize: serialize_openstorage_api_CredentialDeleteRequest,
+    requestDeserialize: deserialize_openstorage_api_CredentialDeleteRequest,
+    responseSerialize: serialize_openstorage_api_CredentialDeleteResponse,
+    responseDeserialize: deserialize_openstorage_api_CredentialDeleteResponse,
+  },
+  // Validate a specified credential
+  credentialValidate: {
+    path: '/openstorage.api.OpenStorageCredentials/CredentialValidate',
+    requestStream: false,
+    responseStream: false,
+    requestType: api_pb.CredentialValidateRequest,
+    responseType: api_pb.CredentialValidateResponse,
+    requestSerialize: serialize_openstorage_api_CredentialValidateRequest,
+    requestDeserialize: deserialize_openstorage_api_CredentialValidateRequest,
+    responseSerialize: serialize_openstorage_api_CredentialValidateResponse,
+    responseDeserialize: deserialize_openstorage_api_CredentialValidateResponse,
+  },
+};
+
+exports.OpenStorageCredentialsClient = grpc.makeGenericClientConstructor(OpenStorageCredentialsService);

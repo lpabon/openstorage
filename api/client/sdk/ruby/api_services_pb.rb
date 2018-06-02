@@ -67,5 +67,40 @@ module Openstorage
 
       Stub = Service.rpc_stub_class
     end
+    module OpenStorageCredentials
+      class Service
+
+        include GRPC::GenericService
+
+        self.marshal_class_method = :encode
+        self.unmarshal_class_method = :decode
+        self.service_name = 'openstorage.api.OpenStorageCredentials'
+
+        # Provide credentials to OpenStorage and if valid,
+        # it will return an identifier to the credentials
+        #
+        # Create credential for AWS S3 and if valid ,
+        # returns a unique identifier
+        rpc :CreateForAWS, CredentialCreateAWSRequest, CredentialCreateAWSResponse
+        # Create credential for Azure and if valid ,
+        # returns a unique identifier
+        rpc :CreateForAzure, CredentialCreateAzureRequest, CredentialCreateAzureResponse
+        # Create credential for Google and if valid ,
+        # returns a unique identifier
+        rpc :CreateForGoogle, CredentialCreateGoogleRequest, CredentialCreateGoogleResponse
+        # EnumerateForAWS lists the configured AWS credentials                      
+        rpc :EnumerateForAWS, CredentialEnumerateAWSRequest, CredentialEnumerateAWSResponse
+        # EnumerateForAzure lists the configured Azure credentials                  
+        rpc :EnumerateForAzure, CredentialEnumerateAzureRequest, CredentialEnumerateAzureResponse
+        # EnumerateForGoogle lists the configured Google credentials                
+        rpc :EnumerateForGoogle, CredentialEnumerateGoogleRequest, CredentialEnumerateGoogleResponse
+        # Delete a specified credential                                                 
+        rpc :CredentialDelete, CredentialDeleteRequest, CredentialDeleteResponse
+        # Validate a specified credential
+        rpc :CredentialValidate, CredentialValidateRequest, CredentialValidateResponse
+      end
+
+      Stub = Service.rpc_stub_class
+    end
   end
 end

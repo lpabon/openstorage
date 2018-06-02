@@ -342,3 +342,170 @@ def add_OpenStorageVolumeServicer_to_server(servicer, server):
   generic_handler = grpc.method_handlers_generic_handler(
       'openstorage.api.OpenStorageVolume', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
+
+
+class OpenStorageCredentialsStub(object):
+  # missing associated documentation comment in .proto file
+  pass
+
+  def __init__(self, channel):
+    """Constructor.
+
+    Args:
+      channel: A grpc.Channel.
+    """
+    self.CreateForAWS = channel.unary_unary(
+        '/openstorage.api.OpenStorageCredentials/CreateForAWS',
+        request_serializer=api__pb2.CredentialCreateAWSRequest.SerializeToString,
+        response_deserializer=api__pb2.CredentialCreateAWSResponse.FromString,
+        )
+    self.CreateForAzure = channel.unary_unary(
+        '/openstorage.api.OpenStorageCredentials/CreateForAzure',
+        request_serializer=api__pb2.CredentialCreateAzureRequest.SerializeToString,
+        response_deserializer=api__pb2.CredentialCreateAzureResponse.FromString,
+        )
+    self.CreateForGoogle = channel.unary_unary(
+        '/openstorage.api.OpenStorageCredentials/CreateForGoogle',
+        request_serializer=api__pb2.CredentialCreateGoogleRequest.SerializeToString,
+        response_deserializer=api__pb2.CredentialCreateGoogleResponse.FromString,
+        )
+    self.EnumerateForAWS = channel.unary_unary(
+        '/openstorage.api.OpenStorageCredentials/EnumerateForAWS',
+        request_serializer=api__pb2.CredentialEnumerateAWSRequest.SerializeToString,
+        response_deserializer=api__pb2.CredentialEnumerateAWSResponse.FromString,
+        )
+    self.EnumerateForAzure = channel.unary_unary(
+        '/openstorage.api.OpenStorageCredentials/EnumerateForAzure',
+        request_serializer=api__pb2.CredentialEnumerateAzureRequest.SerializeToString,
+        response_deserializer=api__pb2.CredentialEnumerateAzureResponse.FromString,
+        )
+    self.EnumerateForGoogle = channel.unary_unary(
+        '/openstorage.api.OpenStorageCredentials/EnumerateForGoogle',
+        request_serializer=api__pb2.CredentialEnumerateGoogleRequest.SerializeToString,
+        response_deserializer=api__pb2.CredentialEnumerateGoogleResponse.FromString,
+        )
+    self.CredentialDelete = channel.unary_unary(
+        '/openstorage.api.OpenStorageCredentials/CredentialDelete',
+        request_serializer=api__pb2.CredentialDeleteRequest.SerializeToString,
+        response_deserializer=api__pb2.CredentialDeleteResponse.FromString,
+        )
+    self.CredentialValidate = channel.unary_unary(
+        '/openstorage.api.OpenStorageCredentials/CredentialValidate',
+        request_serializer=api__pb2.CredentialValidateRequest.SerializeToString,
+        response_deserializer=api__pb2.CredentialValidateResponse.FromString,
+        )
+
+
+class OpenStorageCredentialsServicer(object):
+  # missing associated documentation comment in .proto file
+  pass
+
+  def CreateForAWS(self, request, context):
+    """Provide credentials to OpenStorage and if valid,
+    it will return an identifier to the credentials
+
+    Create credential for AWS S3 and if valid ,
+    returns a unique identifier
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def CreateForAzure(self, request, context):
+    """Create credential for Azure and if valid ,
+    returns a unique identifier
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def CreateForGoogle(self, request, context):
+    """Create credential for Google and if valid ,
+    returns a unique identifier
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def EnumerateForAWS(self, request, context):
+    """EnumerateForAWS lists the configured AWS credentials                      
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def EnumerateForAzure(self, request, context):
+    """EnumerateForAzure lists the configured Azure credentials                  
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def EnumerateForGoogle(self, request, context):
+    """EnumerateForGoogle lists the configured Google credentials                
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def CredentialDelete(self, request, context):
+    """Delete a specified credential                                                 
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def CredentialValidate(self, request, context):
+    """Validate a specified credential
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+
+def add_OpenStorageCredentialsServicer_to_server(servicer, server):
+  rpc_method_handlers = {
+      'CreateForAWS': grpc.unary_unary_rpc_method_handler(
+          servicer.CreateForAWS,
+          request_deserializer=api__pb2.CredentialCreateAWSRequest.FromString,
+          response_serializer=api__pb2.CredentialCreateAWSResponse.SerializeToString,
+      ),
+      'CreateForAzure': grpc.unary_unary_rpc_method_handler(
+          servicer.CreateForAzure,
+          request_deserializer=api__pb2.CredentialCreateAzureRequest.FromString,
+          response_serializer=api__pb2.CredentialCreateAzureResponse.SerializeToString,
+      ),
+      'CreateForGoogle': grpc.unary_unary_rpc_method_handler(
+          servicer.CreateForGoogle,
+          request_deserializer=api__pb2.CredentialCreateGoogleRequest.FromString,
+          response_serializer=api__pb2.CredentialCreateGoogleResponse.SerializeToString,
+      ),
+      'EnumerateForAWS': grpc.unary_unary_rpc_method_handler(
+          servicer.EnumerateForAWS,
+          request_deserializer=api__pb2.CredentialEnumerateAWSRequest.FromString,
+          response_serializer=api__pb2.CredentialEnumerateAWSResponse.SerializeToString,
+      ),
+      'EnumerateForAzure': grpc.unary_unary_rpc_method_handler(
+          servicer.EnumerateForAzure,
+          request_deserializer=api__pb2.CredentialEnumerateAzureRequest.FromString,
+          response_serializer=api__pb2.CredentialEnumerateAzureResponse.SerializeToString,
+      ),
+      'EnumerateForGoogle': grpc.unary_unary_rpc_method_handler(
+          servicer.EnumerateForGoogle,
+          request_deserializer=api__pb2.CredentialEnumerateGoogleRequest.FromString,
+          response_serializer=api__pb2.CredentialEnumerateGoogleResponse.SerializeToString,
+      ),
+      'CredentialDelete': grpc.unary_unary_rpc_method_handler(
+          servicer.CredentialDelete,
+          request_deserializer=api__pb2.CredentialDeleteRequest.FromString,
+          response_serializer=api__pb2.CredentialDeleteResponse.SerializeToString,
+      ),
+      'CredentialValidate': grpc.unary_unary_rpc_method_handler(
+          servicer.CredentialValidate,
+          request_deserializer=api__pb2.CredentialValidateRequest.FromString,
+          response_serializer=api__pb2.CredentialValidateResponse.SerializeToString,
+      ),
+  }
+  generic_handler = grpc.method_handlers_generic_handler(
+      'openstorage.api.OpenStorageCredentials', rpc_method_handlers)
+  server.add_generic_rpc_handlers((generic_handler,))

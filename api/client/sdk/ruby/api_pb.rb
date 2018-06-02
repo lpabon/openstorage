@@ -124,6 +124,19 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
   add_message "openstorage.api.Alerts" do
     repeated :alert, :message, 1, "openstorage.api.Alert"
   end
+  add_message "openstorage.api.ObjectstoreInfo" do
+    optional :uuid, :string, 1
+    optional :volume_id, :string, 2
+    optional :enabled, :bool, 3
+    optional :status, :string, 4
+    optional :action, :int64, 5
+    optional :access_key, :string, 6
+    optional :secret_key, :string, 7
+    repeated :endpoints, :string, 8
+    optional :current_endPoint, :string, 9
+    optional :access_port, :int64, 10
+    optional :region, :string, 11
+  end
   add_message "openstorage.api.VolumeCreateRequest" do
     optional :locator, :message, 1, "openstorage.api.VolumeLocator"
     optional :source, :message, 2, "openstorage.api.Source"
@@ -215,6 +228,69 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
     optional :id, :string, 2
     optional :node_id, :string, 3
     repeated :nodes, :message, 4, "openstorage.api.StorageNode"
+  end
+  add_message "openstorage.api.CredentialCreateAzureRequest" do
+    optional :credential, :message, 1, "openstorage.api.AzureCredential"
+  end
+  add_message "openstorage.api.CredentialCreateAzureResponse" do
+    optional :credential_id, :string, 1
+  end
+  add_message "openstorage.api.CredentialCreateGoogleRequest" do
+    optional :credential, :message, 1, "openstorage.api.GoogleCredential"
+  end
+  add_message "openstorage.api.CredentialCreateGoogleResponse" do
+    optional :credential_id, :string, 1
+  end
+  add_message "openstorage.api.CredentialCreateAWSRequest" do
+    optional :credential, :message, 1, "openstorage.api.S3Credential"
+  end
+  add_message "openstorage.api.CredentialCreateAWSResponse" do
+    optional :credential_id, :string, 1
+  end
+  add_message "openstorage.api.S3Credential" do
+    optional :credential_id, :string, 1
+    optional :access_key, :string, 2
+    optional :secret_key, :string, 3
+    optional :endpoint, :string, 4
+    optional :region, :string, 5
+  end
+  add_message "openstorage.api.AzureCredential" do
+    optional :credential_id, :string, 1
+    optional :account_name, :string, 2
+    optional :account_key, :string, 3
+  end
+  add_message "openstorage.api.GoogleCredential" do
+    optional :credential_id, :string, 1
+    optional :project_id, :string, 2
+    optional :json_key, :string, 3
+  end
+  add_message "openstorage.api.CredentialEnumerateAWSRequest" do
+    optional :credential_id, :string, 1
+  end
+  add_message "openstorage.api.CredentialEnumerateAWSResponse" do
+    repeated :credential, :message, 1, "openstorage.api.S3Credential"
+  end
+  add_message "openstorage.api.CredentialEnumerateAzureRequest" do
+    optional :credential_id, :string, 1
+  end
+  add_message "openstorage.api.CredentialEnumerateAzureResponse" do
+    repeated :credential, :message, 1, "openstorage.api.AzureCredential"
+  end
+  add_message "openstorage.api.CredentialEnumerateGoogleRequest" do
+    optional :credential_id, :string, 1
+  end
+  add_message "openstorage.api.CredentialEnumerateGoogleResponse" do
+    repeated :credential, :message, 1, "openstorage.api.GoogleCredential"
+  end
+  add_message "openstorage.api.CredentialDeleteRequest" do
+    optional :credential_id, :string, 1
+  end
+  add_message "openstorage.api.CredentialDeleteResponse" do
+  end
+  add_message "openstorage.api.CredentialValidateRequest" do
+    optional :credential_id, :string, 1
+  end
+  add_message "openstorage.api.CredentialValidateResponse" do
   end
   add_message "openstorage.api.VolumeMountRequest" do
     optional :volume_id, :string, 1
@@ -456,6 +532,7 @@ module Openstorage
     Stats = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.Stats").msgclass
     Alert = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.Alert").msgclass
     Alerts = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.Alerts").msgclass
+    ObjectstoreInfo = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.ObjectstoreInfo").msgclass
     VolumeCreateRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeCreateRequest").msgclass
     VolumeResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeResponse").msgclass
     VolumeCreateResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeCreateResponse").msgclass
@@ -474,6 +551,25 @@ module Openstorage
     GroupSnapCreateResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.GroupSnapCreateResponse").msgclass
     StorageNode = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.StorageNode").msgclass
     StorageCluster = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.StorageCluster").msgclass
+    CredentialCreateAzureRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialCreateAzureRequest").msgclass
+    CredentialCreateAzureResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialCreateAzureResponse").msgclass
+    CredentialCreateGoogleRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialCreateGoogleRequest").msgclass
+    CredentialCreateGoogleResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialCreateGoogleResponse").msgclass
+    CredentialCreateAWSRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialCreateAWSRequest").msgclass
+    CredentialCreateAWSResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialCreateAWSResponse").msgclass
+    S3Credential = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.S3Credential").msgclass
+    AzureCredential = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.AzureCredential").msgclass
+    GoogleCredential = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.GoogleCredential").msgclass
+    CredentialEnumerateAWSRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialEnumerateAWSRequest").msgclass
+    CredentialEnumerateAWSResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialEnumerateAWSResponse").msgclass
+    CredentialEnumerateAzureRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialEnumerateAzureRequest").msgclass
+    CredentialEnumerateAzureResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialEnumerateAzureResponse").msgclass
+    CredentialEnumerateGoogleRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialEnumerateGoogleRequest").msgclass
+    CredentialEnumerateGoogleResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialEnumerateGoogleResponse").msgclass
+    CredentialDeleteRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialDeleteRequest").msgclass
+    CredentialDeleteResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialDeleteResponse").msgclass
+    CredentialValidateRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialValidateRequest").msgclass
+    CredentialValidateResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.CredentialValidateResponse").msgclass
     VolumeMountRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeMountRequest").msgclass
     VolumeMountResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeMountResponse").msgclass
     VolumeUnmountRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("openstorage.api.VolumeUnmountRequest").msgclass
