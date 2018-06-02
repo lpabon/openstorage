@@ -648,8 +648,8 @@ message StorageCluster {
 
 service OpenStorageCluster {
   // Enumerate lists all the nodes in the cluster.
-  rpc Enumerate(ClusterEnumerateRequest)
-    returns (ClusterEnumerateResponse) {
+  rpc Enumerate(SdkClusterEnumerateRequest)
+    returns (SdkClusterEnumerateResponse) {
       option(google.api.http) = {
         post: "/v1/cluster/enumerate"
         body: "*"
@@ -657,8 +657,8 @@ service OpenStorageCluster {
     }
 
   // Inspect the node given a UUID.
-  rpc Inspect(ClusterInspectRequest)
-    returns (ClusterInspectResponse) {
+  rpc Inspect(SdkClusterInspectRequest)
+    returns (SdkClusterInspectResponse) {
       option(google.api.http) = {
         post: "/v1/cluster/inspect"
         body: "*"
@@ -666,8 +666,8 @@ service OpenStorageCluster {
     }
 
   // Get a list of alerts from the storage cluster
-  rpc AlertEnumerate(ClusterAlertEnumerateRequest)
-    returns (ClusterAlertEnumerateResponse) {
+  rpc AlertEnumerate(SdkClusterAlertEnumerateRequest)
+    returns (SdkClusterAlertEnumerateResponse) {
       option(google.api.http) = {
         post: "/v1/cluster/alert/enumerate"
         body: "*"
@@ -675,8 +675,8 @@ service OpenStorageCluster {
     }
 
   // Clear the alert for a given resource
-  rpc AlertClear(ClusterAlertClearRequest)
-    returns (ClusterAlertClearResponse) {
+  rpc AlertClear(SdkClusterAlertClearRequest)
+    returns (SdkClusterAlertClearResponse) {
       option(google.api.http) = {
         post: "/v1/cluster/alert/clear"
         body: "*"
@@ -684,8 +684,8 @@ service OpenStorageCluster {
     }
 
   // Erases an alert for a given resource
-  rpc AlertErase(ClusterAlertEraseRequest)
-    returns (ClusterAlertEraseResponse) {
+  rpc AlertErase(SdkClusterAlertEraseRequest)
+    returns (SdkClusterAlertEraseResponse) {
       option(google.api.http) = {
         post: "/v1/cluster/alert/erase"
         body: "*"
@@ -695,17 +695,17 @@ service OpenStorageCluster {
 
 service OpenStorageVolume {
   // Creates a new volume
-  rpc Create(OpenStorageVolumeCreateRequest)
-    returns (OpenStorageVolumeCreateResponse) {
+  rpc Create(SdkVolumeCreateRequest)
+    returns (SdkVolumeCreateResponse) {
       option(google.api.http) = {
         post: "/v1/volume/create"
         body: "*"
       };
     }
 
-  // CreateFromVolumeID creates a new volume cloned from an existing volume
-  rpc CreateFromVolumeID(VolumeCreateFromVolumeIDRequest)
-    returns (VolumeCreateFromVolumeIDResponse) {
+  // CreateFromVolumeId creates a new volume cloned from an existing volume
+  rpc CreateFromVolumeId(SdkVolumeCreateFromVolumeIdRequest)
+    returns (SdkVolumeCreateFromVolumeIdResponse) {
       option(google.api.http) = {
         post: "/v1/volume/createfromid"
         body: "*"
@@ -713,8 +713,8 @@ service OpenStorageVolume {
     }
 
   // Delete a volume
-  rpc Delete(VolumeDeleteRequest)
-    returns (VolumeDeleteResponse) {
+  rpc Delete(SdkVolumeDeleteRequest)
+    returns (SdkVolumeDeleteResponse) {
       option(google.api.http) = {
         post: "/v1/volume/delete"
         body: "*"
@@ -722,8 +722,8 @@ service OpenStorageVolume {
     }
 
   // Get information on a volume
-  rpc Inspect(VolumeInspectRequest)
-    returns (VolumeInspectResponse) {
+  rpc Inspect(SdkVolumeInspectRequest)
+    returns (SdkVolumeInspectResponse) {
       option(google.api.http) = {
         post: "/v1/volume/inspect"
         body: "*"
@@ -731,8 +731,8 @@ service OpenStorageVolume {
     }
 
   // Get a list of volumes
-  rpc Enumerate(VolumeEnumerateRequest)
-    returns (VolumeEnumerateResponse) {
+  rpc Enumerate(SdkVolumeEnumerateRequest)
+    returns (SdkVolumeEnumerateResponse) {
       option(google.api.http) = {
         post: "/v1/volume/enumerate"
         body: "*"
@@ -741,8 +741,8 @@ service OpenStorageVolume {
 
   // Create a snapshot of a volume. This creates an immutable (read-only),
   // point-in-time snapshot of a volume.
-  rpc SnapshotCreate(VolumeSnapshotCreateRequest)
-    returns (VolumeSnapshotCreateResponse) {
+  rpc SnapshotCreate(SdkVolumeSnapshotCreateRequest)
+    returns (SdkVolumeSnapshotCreateResponse) {
       option(google.api.http) = {
         post: "/v1/volume/snapshot/create"
         body: "*"
@@ -750,8 +750,8 @@ service OpenStorageVolume {
     }
 
   // Restores a volume to a specified snapshot
-  rpc SnapshotRestore(VolumeSnapshotRestoreRequest)
-    returns (VolumeSnapshotRestoreResponse) {
+  rpc SnapshotRestore(SdkVolumeSnapshotRestoreRequest)
+    returns (SdkVolumeSnapshotRestoreResponse) {
       option(google.api.http) = {
         post: "/v1/volume/snapshot/restore"
         body: "*"
@@ -759,8 +759,8 @@ service OpenStorageVolume {
     }
 
   // List the number of snapshots for a specific volume
-  rpc SnapshotEnumerate(VolumeSnapshotEnumerateRequest)
-    returns (VolumeSnapshotEnumerateResponse) {
+  rpc SnapshotEnumerate(SdkVolumeSnapshotEnumerateRequest)
+    returns (SdkVolumeSnapshotEnumerateResponse) {
       option(google.api.http) = {
         post: "/v1/volume/snapshot/enumerate"
         body: "*"
@@ -768,8 +768,8 @@ service OpenStorageVolume {
     }
 
   // Attach device to host                                                      
-  rpc Attach(VolumeAttachRequest)                                               
-    returns (VolumeAttachResponse) {                                            
+  rpc Attach(SdkVolumeAttachRequest)                                               
+    returns (SdkVolumeAttachResponse) {                                            
       option(google.api.http) = {                                               
         post: "/v1/volume/attach"                                               
         body: "*"                                                               
@@ -777,8 +777,8 @@ service OpenStorageVolume {
     }  
 
   // Detaches the volume from the node.
-  rpc Detach(VolumeDetachRequest)
-    returns (VolumeDetachResponse) {
+  rpc Detach(SdkVolumeDetachRequest)
+    returns (SdkVolumeDetachResponse) {
       option(google.api.http) = {
         post: "/v1/volume/detach"
         body: "*"
@@ -786,8 +786,8 @@ service OpenStorageVolume {
     }
 
   // Attaches the volume to a node.
-  rpc Mount(VolumeMountRequest)
-    returns(VolumeMountResponse) {
+  rpc Mount(SdkVolumeMountRequest)
+    returns(SdkVolumeMountResponse) {
       option(google.api.http) = {
         post: "/v1/volume/mount"
         body: "*"
@@ -795,8 +795,8 @@ service OpenStorageVolume {
     }
 
   // Unmount volume at specified path                                           
-  rpc Unmount(VolumeUnmountRequest)                                             
-    returns (VolumeUnmountResponse) {                                         
+  rpc Unmount(SdkVolumeUnmountRequest)                                             
+      returns(SdkVolumeUnmountResponse) {                                         
       option(google.api.http) = {                                               
         post: "/v1/volume/unmount"                                              
         body: "*"                                                               
@@ -811,8 +811,8 @@ service OpenStorageCredentials {
 
   // Create credential for AWS S3 and if valid ,
   // returns a unique identifier
-  rpc CreateForAWS(CredentialCreateAWSRequest)
-    returns (CredentialCreateAWSResponse) {
+  rpc CreateForAWS(SdkCredentialCreateAWSRequest)
+    returns (SdkCredentialCreateAWSResponse) {
       option(google.api.http) = {
         post: "/v1/credentials/create/aws"
         body: "*"
@@ -821,8 +821,8 @@ service OpenStorageCredentials {
 
   // Create credential for Azure and if valid ,
   // returns a unique identifier
-  rpc CreateForAzure(CredentialCreateAzureRequest)
-    returns (CredentialCreateAzureResponse) {
+  rpc CreateForAzure(SdkCredentialCreateAzureRequest)
+    returns (SdkCredentialCreateAzureResponse) {
       option(google.api.http) = {
         post: "/v1/credentials/create/azure"
         body: "*"
@@ -831,8 +831,8 @@ service OpenStorageCredentials {
 
   // Create credential for Google and if valid ,
   // returns a unique identifier
-  rpc CreateForGoogle(CredentialCreateGoogleRequest)
-    returns (CredentialCreateGoogleResponse) {
+  rpc CreateForGoogle(SdkCredentialCreateGoogleRequest)
+    returns (SdkCredentialCreateGoogleResponse) {
       option(google.api.http) = {
         post: "/v1/credentials/create/google"
         body: "*"
@@ -840,8 +840,8 @@ service OpenStorageCredentials {
     }
 
   // EnumerateForAWS lists the configured AWS credentials                      
-  rpc EnumerateForAWS(CredentialEnumerateAWSRequest)                       
-    returns (CredentialEnumerateAWSResponse) {                             
+  rpc EnumerateForAWS(SdkCredentialEnumerateAWSRequest)                       
+    returns (SdkCredentialEnumerateAWSResponse) {                             
       option(google.api.http) = {                                                
         post: "/v1/credentials/enumerate/aws"                                    
         body: "*"                                                                
@@ -849,8 +849,8 @@ service OpenStorageCredentials {
     }                                                                            
                                                                                 
   // EnumerateForAzure lists the configured Azure credentials                  
-  rpc EnumerateForAzure(CredentialEnumerateAzureRequest)                   
-    returns (CredentialEnumerateAzureResponse) {                           
+  rpc EnumerateForAzure(SdkCredentialEnumerateAzureRequest)                   
+    returns (SdkCredentialEnumerateAzureResponse) {                           
       option(google.api.http) = {                                                
         post: "/v1/credentials/enumerate/azure"                                  
         body: "*"                                                                
@@ -858,8 +858,8 @@ service OpenStorageCredentials {
     }                                                                            
 
   // EnumerateForGoogle lists the configured Google credentials                
-  rpc EnumerateForGoogle(CredentialEnumerateGoogleRequest)                 
-    returns (CredentialEnumerateGoogleResponse) {                        
+  rpc EnumerateForGoogle(SdkCredentialEnumerateGoogleRequest)                 
+    returns (SdkCredentialEnumerateGoogleResponse) {                        
       option(google.api.http) = {                                              
         post: "/v1/credentials/enumerate/google"                               
         body: "*"                                                              
@@ -867,8 +867,8 @@ service OpenStorageCredentials {
     }                                                                          
                                                                                 
   // Delete a specified credential                                                 
-  rpc CredentialDelete(CredentialDeleteRequest)                                         
-    returns (CredentialDeleteResponse){                                             
+  rpc CredentialDelete(SdkCredentialDeleteRequest)                                         
+    returns (SdkCredentialDeleteResponse){                                             
       option(google.api.http) = {                                               
         post: "/v1/credentials/delete"                                       
         body: "*"                                                              
@@ -876,8 +876,8 @@ service OpenStorageCredentials {
     }                                               
 
   // Validate a specified credential
-  rpc CredentialValidate(CredentialValidateRequest)
-    returns (CredentialValidateResponse) {
+  rpc CredentialValidate(SdkCredentialValidateRequest)
+    returns (SdkCredentialValidateResponse) {
       option(google.api.http) = {
         post: "/v1/credentials/validate"
         body: "*"
@@ -885,32 +885,32 @@ service OpenStorageCredentials {
     }
 }
 
-message CredentialCreateAzureRequest {
+message SdkCredentialCreateAzureRequest {
   // Azure Credential
   AzureCredential credential = 1;
 }
 
-message CredentialCreateAzureResponse {
+message SdkCredentialCreateAzureResponse {
   // Id of the credentials
   string credential_id = 1;
 }
 
-message CredentialCreateGoogleRequest {
+message SdkCredentialCreateGoogleRequest {
   // Google Credential
   GoogleCredential credential = 1;
 }
 
-message CredentialCreateGoogleResponse {
+message SdkCredentialCreateGoogleResponse {
   // Id of the credentials
   string credential_id = 1;
 }
 
-message CredentialCreateAWSRequest {
+message SdkCredentialCreateAWSRequest {
   // AWS S3 Credential
   S3Credential credential = 1;
 }
 
-message CredentialCreateAWSResponse {
+message SdkCredentialCreateAWSResponse {
   // Id of the credentials
   string credential_id = 1;
 }
@@ -946,50 +946,50 @@ message GoogleCredential {
 }
 
 // should enumerate accept anything?                                            
-message CredentialEnumerateAWSRequest {                                     
+message SdkCredentialEnumerateAWSRequest {                                     
   // Id of the credentials                                                     
   string credential_id = 1;                                                    
 }                  
 
-message CredentialEnumerateAWSResponse {                                   
+message SdkCredentialEnumerateAWSResponse {                                   
 	// Array of Credentials for AWS
 	repeated S3Credential credential = 1;
 }                                                                               
                                                                                 
-message CredentialEnumerateAzureRequest {                                   
+message SdkCredentialEnumerateAzureRequest {                                   
   string credential_id = 1;                                                   
 }                                                                               
                                                                                 
-message CredentialEnumerateAzureResponse {                                  
+message SdkCredentialEnumerateAzureResponse {                                  
 	// List of Credentials for Azure
 	repeated AzureCredential credential = 1;
 }                                                                               
                                                                                 
-message CredentialEnumerateGoogleRequest {                                  
+message SdkCredentialEnumerateGoogleRequest {                                  
   string credential_id = 1;                                                   
 }                                                                               
                                                                                 
-message CredentialEnumerateGoogleResponse {                               
+message SdkCredentialEnumerateGoogleResponse {                               
 	// List of Credentials for Google 
 	repeated GoogleCredential credential = 1; 
 }                            
-message CredentialDeleteRequest {                                                   
+message SdkCredentialDeleteRequest {                                                   
   // ID for credentials                                                       
   string credential_id = 1;                                                   
 }  
 
-message CredentialDeleteResponse {                                                  
+message SdkCredentialDeleteResponse {                                                  
 }                                                                               
       
-message CredentialValidateRequest {
+message SdkCredentialValidateRequest {
   // Id of the credentials
   string credential_id = 1;
 }
 
-message CredentialValidateResponse {
+message SdkCredentialValidateResponse {
 }
 
-message VolumeMountRequest {
+message SdkVolumeMountRequest {
   // Id of the volume
   string volume_id = 1;
   // Mount path for mounting the volume.
@@ -998,10 +998,10 @@ message VolumeMountRequest {
   map<string, string> options = 3;  
 }
 
-message VolumeMountResponse {
+message SdkVolumeMountResponse {
 }
 
-message VolumeUnmountRequest {                                                  
+message SdkVolumeUnmountRequest {                                                  
   // Id of volume                                                             
   string volume_id = 1;                                                       
   // MountPath for device                                                     
@@ -1010,42 +1010,42 @@ message VolumeUnmountRequest {
   map<string, string> options = 3;                                            
 }
      
-message VolumeUnmountResponse {                                                 
+message SdkVolumeUnmountResponse {                                                 
 }
 
-message VolumeAttachRequest {                                                   
+message SdkVolumeAttachRequest {                                                   
   // Id of volume                                                             
   string volume_id = 1;                                                       
   // Options for attaching volume, right now only passphrase options is supported
   map<string, string>  options = 2;                                           
 }                                                                               
                                                                                 
-message VolumeAttachResponse {                                                  
+message SdkVolumeAttachResponse {                                                  
   // Device path where device is exported                                     
   string device_path = 1;                                                     
 }
           
-message VolumeDetachRequest {
+message SdkVolumeDetachRequest {
   // Id of the volume
   string volume_id = 1;
 }
 
-message VolumeDetachResponse {
+message SdkVolumeDetachResponse {
 }
 
-message OpenStorageVolumeCreateRequest {
+message SdkVolumeCreateRequest {
   // Unique name of the volume. This will be used for idempotency.
   string name = 1;
   // Volume specification
   VolumeSpec spec = 2;
 }
 
-message OpenStorageVolumeCreateResponse {
+message SdkVolumeCreateResponse {
   // Id of new volume
   string volume_id = 1;
 }
 
-message VolumeCreateFromVolumeIDRequest {
+message SdkVolumeCreateFromVolumeIdRequest {
   // Unique name of the volume. This will be used for idempotency.
   string name = 1;
   // Parent volume id, if specified will create a new volume as a clone of the parent.
@@ -1054,93 +1054,93 @@ message VolumeCreateFromVolumeIDRequest {
   VolumeSpec spec = 3;
 }
 
-message VolumeCreateFromVolumeIDResponse {
+message SdkVolumeCreateFromVolumeIdResponse {
   // Id of new volume
   string volume_id = 1;
 }
 
-message VolumeDeleteRequest {
+message SdkVolumeDeleteRequest {
   // Id of volume to delete
   string volume_id = 1;
 }
 
-message VolumeDeleteResponse {
+message SdkVolumeDeleteResponse {
 }
 
-message VolumeInspectRequest {
+message SdkVolumeInspectRequest {
   // Id of volume to inspect
   string volume_id = 1;
 }
 
-message VolumeInspectResponse {
+message SdkVolumeInspectResponse {
   // Information about the volume
   Volume volume = 1;
 }
 
-message VolumeEnumerateRequest {
+message SdkVolumeEnumerateRequest {
   // Volumes to match to this locator.
   // If not provided, all volumes will be returned.
   VolumeLocator locator = 1;
 }
 
-message VolumeEnumerateResponse {
+message SdkVolumeEnumerateResponse {
   // List of volumes matching label
   repeated Volume volumes = 1;
 }
 
-message VolumeSnapshotCreateRequest{
+message SdkVolumeSnapshotCreateRequest{
   // Id of volume to take the snapshot from
   string volume_id = 1;
   // Labels to apply to snapshot
   map<string, string> labels = 2;
 }
 
-message VolumeSnapshotCreateResponse {
+message SdkVolumeSnapshotCreateResponse {
   // Id of immutable snapshot
   string snapshot_id = 1;
 }
 
-message VolumeSnapshotRestoreRequest {
+message SdkVolumeSnapshotRestoreRequest {
   // Id of volume
   string volume_id = 1;
   // Snapshot id to apply to `volume_id`
   string snapshot_id = 2;
 }
 
-message VolumeSnapshotRestoreResponse {
+message SdkVolumeSnapshotRestoreResponse {
 }
 
-message VolumeSnapshotEnumerateRequest {
+message SdkVolumeSnapshotEnumerateRequest {
   // Id of volume
   string volume_id = 1;
   // Labels from snapshot
   map<string, string> labels = 2;
 }
 
-message VolumeSnapshotEnumerateResponse {
+message SdkVolumeSnapshotEnumerateResponse {
   // List of immutable snapshots
   repeated Volume snapshots = 1;
 }
 
-message ClusterEnumerateRequest {
+message SdkClusterEnumerateRequest {
 }
 
-message ClusterEnumerateResponse {
+message SdkClusterEnumerateResponse {
   // Cluster information
 	StorageCluster cluster = 1;
 }
 
-message ClusterInspectRequest {
+message SdkClusterInspectRequest {
   // Id of node to inspect (required)
 	string node_id = 1;
 }
 
-message ClusterInspectResponse {
+message SdkClusterInspectResponse {
   // Node information
 	StorageNode node = 1;
 }
 
-message ClusterAlertEnumerateRequest {
+message SdkClusterAlertEnumerateRequest {
   // Start time of alerts (required)
   google.protobuf.Timestamp time_start = 1;
   // End time of alerts (required) 
@@ -1149,27 +1149,27 @@ message ClusterAlertEnumerateRequest {
 	ResourceType resource = 3;
 }
 
-message ClusterAlertEnumerateResponse {
+message SdkClusterAlertEnumerateResponse {
   // Information on the alerts requested 
 	Alerts alerts = 1;
 }
 
-message ClusterAlertClearRequest {
+message SdkClusterAlertClearRequest {
   // Type of resource (required)
   ResourceType resource = 1;
   // Id of alert as returned by ClusterEnumerateAlertResponse (required) 
 	int64 alert_id = 2;
 }
 
-message ClusterAlertClearResponse {
+message SdkClusterAlertClearResponse {
 }
 
-message ClusterAlertEraseRequest {
+message SdkClusterAlertEraseRequest {
   // Type of resource (required)
   ResourceType resource = 1;
   // Id of alert as returned by ClusterEnumerateAlertResponse (required) 
 	int64 alert_id = 2;
 }
 
-message ClusterAlertEraseResponse {
+message SdkClusterAlertEraseResponse {
 }
