@@ -963,7 +963,7 @@
     "apiCredentialEnumerateAWSResponse": {
       "type": "object",
       "properties": {
-        "cred": {
+        "credential": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/apiS3Credential"
@@ -983,7 +983,7 @@
     "apiCredentialEnumerateAzureResponse": {
       "type": "object",
       "properties": {
-        "cred": {
+        "credential": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/apiAzureCredential"
@@ -1003,7 +1003,7 @@
     "apiCredentialEnumerateGoogleResponse": {
       "type": "object",
       "properties": {
-        "cred": {
+        "credential": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/apiGoogleCredential"
