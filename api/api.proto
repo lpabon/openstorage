@@ -805,7 +805,6 @@ service OpenStorageVolume {
 }
 
 service OpenStorageObjectstore {
-
   // InspectObjectstore returns current status of objectstore 
   rpc InspectObjectstore(SdkObjectstoreInspectRequest)
     returns(SdkObjectstoreInspectResponse){
@@ -1244,6 +1243,8 @@ message SdkObjectstoreDeleteResponse {
 message SdkObjectstoreUpdateRequest {
   // Objectstore Id to update
   string objectstore_id = 1;
+  // enable/disable objectstore
+  bool enable = 2;
 }
 
 message SdkObjectstoreUpdateResponse {
