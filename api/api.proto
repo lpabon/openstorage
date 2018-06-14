@@ -651,8 +651,7 @@ service OpenStorageCluster {
   rpc Enumerate(SdkClusterEnumerateRequest)
     returns (SdkClusterEnumerateResponse) {
       option(google.api.http) = {
-        post: "/v1/cluster/enumerate"
-        body: "*"
+        get: "/v1/cluster"
       };
     }
 
@@ -660,8 +659,7 @@ service OpenStorageCluster {
   rpc Inspect(SdkClusterInspectRequest)
     returns (SdkClusterInspectResponse) {
       option(google.api.http) = {
-        post: "/v1/cluster/inspect"
-        body: "*"
+        get: "/v1/cluster/{node_id}"
       };
     }
 
@@ -687,8 +685,7 @@ service OpenStorageCluster {
   rpc AlertErase(SdkClusterAlertEraseRequest)
     returns (SdkClusterAlertEraseResponse) {
       option(google.api.http) = {
-        post: "/v1/cluster/alert/erase"
-        body: "*"
+        delete: "/v1/cluster/alert/{alert_id}"
       };
     }
 }
@@ -698,7 +695,7 @@ service OpenStorageVolume {
   rpc Create(SdkVolumeCreateRequest)
     returns (SdkVolumeCreateResponse) {
       option(google.api.http) = {
-        post: "/v1/volume/create"
+        post: "/v1/volume"
         body: "*"
       };
     }
@@ -716,8 +713,7 @@ service OpenStorageVolume {
   rpc Delete(SdkVolumeDeleteRequest)
     returns (SdkVolumeDeleteResponse) {
       option(google.api.http) = {
-        post: "/v1/volume/delete"
-        body: "*"
+        delete: "/v1/volume/{volume_id}"
       };
     }
 
@@ -725,8 +721,7 @@ service OpenStorageVolume {
   rpc Inspect(SdkVolumeInspectRequest)
     returns (SdkVolumeInspectResponse) {
       option(google.api.http) = {
-        post: "/v1/volume/inspect"
-        body: "*"
+        get: "/v1/volume/{volume_id}"
       };
     }
 
@@ -744,7 +739,7 @@ service OpenStorageVolume {
   rpc SnapshotCreate(SdkVolumeSnapshotCreateRequest)
     returns (SdkVolumeSnapshotCreateResponse) {
       option(google.api.http) = {
-        post: "/v1/volume/snapshot/create"
+        post: "/v1/volume/snapshot"
         body: "*"
       };
     }
@@ -809,8 +804,7 @@ service OpenStorageObjectstore {
   rpc Inspect(SdkObjectstoreInspectRequest)
     returns(SdkObjectstoreInspectResponse){
       option(google.api.http) = {
-        post: "/v1/objectstore/enumerate"
-        body: "*"
+        get: "/v1/objectstore/{objectstore_id}"
       };
     }
 
@@ -818,7 +812,7 @@ service OpenStorageObjectstore {
   rpc Create(SdkObjectstoreCreateRequest)
     returns(SdkObjectstoreCreateResponse){
       option(google.api.http) = {
-        post: "/v1/objectstore/create"
+        post: "/v1/objectstore"
         body: "*"
       };
     }
@@ -827,8 +821,7 @@ service OpenStorageObjectstore {
   rpc Delete(SdkObjectstoreDeleteRequest)
     returns(SdkObjectstoreDeleteResponse){
       option(google.api.http) = {
-        post: "/v1/objectstore/delete"
-        body: "*"
+        delete: "/v1/objectstore/{objectstore_id}"
       };
     }
 
@@ -852,7 +845,7 @@ service OpenStorageCredentials {
   rpc CreateForAWS(SdkCredentialCreateAWSRequest)
     returns (SdkCredentialCreateAWSResponse) {
       option(google.api.http) = {
-        post: "/v1/credentials/create/aws"
+        post: "/v1/credentials/aws"
         body: "*"
       };
     }
@@ -862,7 +855,7 @@ service OpenStorageCredentials {
   rpc CreateForAzure(SdkCredentialCreateAzureRequest)
     returns (SdkCredentialCreateAzureResponse) {
       option(google.api.http) = {
-        post: "/v1/credentials/create/azure"
+        post: "/v1/credentials/azure"
         body: "*"
       };
     }
@@ -872,7 +865,7 @@ service OpenStorageCredentials {
   rpc CreateForGoogle(SdkCredentialCreateGoogleRequest)
     returns (SdkCredentialCreateGoogleResponse) {
       option(google.api.http) = {
-        post: "/v1/credentials/create/google"
+        post: "/v1/credentials/google"
         body: "*"
       };
     }
@@ -881,8 +874,7 @@ service OpenStorageCredentials {
   rpc EnumerateForAWS(SdkCredentialEnumerateAWSRequest)
     returns (SdkCredentialEnumerateAWSResponse) {
       option(google.api.http) = {
-        post: "/v1/credentials/enumerate/aws"
-        body: "*"
+        get: "/v1/credentials/aws"
       };
     }
 
@@ -890,8 +882,7 @@ service OpenStorageCredentials {
   rpc EnumerateForAzure(SdkCredentialEnumerateAzureRequest)
     returns (SdkCredentialEnumerateAzureResponse) {
       option(google.api.http) = {
-        post: "/v1/credentials/enumerate/azure"
-        body: "*"
+        get: "/v1/credentials/azure"
       };
     }
 
@@ -899,8 +890,7 @@ service OpenStorageCredentials {
   rpc EnumerateForGoogle(SdkCredentialEnumerateGoogleRequest)
     returns (SdkCredentialEnumerateGoogleResponse) {
       option(google.api.http) = {
-        post: "/v1/credentials/enumerate/google"
-        body: "*"
+        get: "/v1/credentials/google"
       };
     }
 
@@ -908,8 +898,9 @@ service OpenStorageCredentials {
   rpc Delete(SdkCredentialDeleteRequest)
     returns (SdkCredentialDeleteResponse){
       option(google.api.http) = {
-        post: "/v1/credentials/delete"
-        body: "*"
+        // Use credentials/delete/{id} so that it does not have
+        // any collisions with azure, google, or aws.
+        delete: "/v1/credentials/delete/{credential_id}"
       };
     }
 
@@ -929,7 +920,7 @@ service OpenStorageSchedulePolicy {
   rpc Create(SdkSchedulePolicyCreateRequest)
     returns (SdkSchedulePolicyCreateResponse) {
       option(google.api.http) = {
-        post: "/v1/schedulepolicy/create"
+        post: "/v1/schedulepolicy"
         body: "*"
       };
     }
@@ -946,8 +937,7 @@ service OpenStorageSchedulePolicy {
   rpc Enumerate(SdkSchedulePolicyEnumerateRequest)
     returns (SdkSchedulePolicyEnumerateResponse) {
       option(google.api.http) = {
-        post: "/v1/schedulepolicy/enumerate"
-        body: "*"
+        get: "/v1/schedulepolicy"
       };
     }
 
@@ -955,8 +945,7 @@ service OpenStorageSchedulePolicy {
   rpc Inspect(SdkSchedulePolicyInspectRequest)
   returns (SdkSchedulePolicyInspectResponse) {
     option(google.api.http) = {
-      post: "/v1/schedulepolicy/inspect"
-      body: "*"
+      get: "/v1/schedulepolicy/{name}"
     };
   }
 
@@ -964,8 +953,7 @@ service OpenStorageSchedulePolicy {
   rpc Delete(SdkSchedulePolicyDeleteRequest)
     returns (SdkSchedulePolicyDeleteResponse) {
       option(google.api.http) = {
-        post: "/v1/schedulepolicy/delete"
-        body: "*"
+        delete: "/v1/schedulepolicy/{name}"
       };
     }
 }
@@ -976,7 +964,7 @@ service OpenStorageCloudBackup {
   rpc Create(SdkCloudBackupCreateRequest)
     returns (SdkCloudBackupCreateResponse) {
       option(google.api.http) = {
-        post: "/v1/cloudbackup/create"
+        post: "/v1/cloudbackup"
         body: "*"
       };
     }
@@ -994,8 +982,7 @@ service OpenStorageCloudBackup {
   rpc Delete(SdkCloudBackupDeleteRequest)
     returns (SdkCloudBackupDeleteResponse) {
       option(google.api.http) = {
-        post: "/v1/cloudbackup/delete"
-        body: "*"
+        delete: "/v1/cloudbackup/{backup_id}"
       };
     }
 
@@ -1012,8 +999,7 @@ service OpenStorageCloudBackup {
   rpc Enumerate(SdkCloudBackupEnumerateRequest)
     returns (SdkCloudBackupEnumerateResponse) {
       option(google.api.http) = {
-        post: "/v1/cloudbackup/enumerate"
-        body: "*"
+        get: "/v1/cloudbackup"
       };
     }
 
@@ -1021,8 +1007,7 @@ service OpenStorageCloudBackup {
   rpc Status(SdkCloudBackupStatusRequest)
     returns (SdkCloudBackupStatusResponse) {
       option(google.api.http) = {
-        post: "/v1/cloudbackup/status"
-        body: "*"
+        get: "/v1/cloudbackup/status/{src_volume_id}"
       };
     }
 
@@ -1030,8 +1015,7 @@ service OpenStorageCloudBackup {
   rpc Catalog(SdkCloudBackupCatalogRequest)
     returns (SdkCloudBackupCatalogResponse) {
       option(google.api.http) = {
-        post: "/v1/cloudbackup/catalog"
-        body: "*"
+        get: "/v1/cloudbackup/catalog/{backup_id}"
       };
     }
 
@@ -1039,8 +1023,7 @@ service OpenStorageCloudBackup {
   rpc History(SdkCloudBackupHistoryRequest)
     returns (SdkCloudBackupHistoryResponse) {
       option(google.api.http) = {
-        post: "/v1/cloudbackup/history"
-        body: "*"
+        get: "/v1/cloudbackup/history/{src_volume_id}"
       };
     }
 
