@@ -1063,9 +1063,11 @@ func (c *ClusterManager) initializeAndStartHeartbeat(
 	return lastIndex, nil
 }
 
-func (c *ClusterManager) setupDefaultManagers(config *ClusterServerConfiguration) {
+func (c *ClusterManager) setupManagers(config *ClusterServerConfiguration) {
 	if config.ConfigSchedManager == nil {
 		c.schedManager = sched.NewDefaultSchedulePolicy()
+	} else {
+		c.schedManager = config.ConfigSchedManager
 	}
 }
 
@@ -1102,7 +1104,7 @@ func (c *ClusterManager) StartWithConfiguration(
 	}
 
 	// Setup any default managers if none were provided
-	c.setupDefaultManagers(config)
+	c.setupManagers(config)
 
 	c.gEnabled = true
 	c.selfNode = api.Node{}
