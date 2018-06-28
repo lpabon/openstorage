@@ -407,7 +407,7 @@ message Alert {
   ResourceType resource = 7;
   // Cleared Flag
   bool cleared = 8;
-  // TTL in seconds for this Alert
+  // Time-to-live in seconds for this Alert
   uint64 ttl = 9;
   // UniqueTag helps identify a unique alert for a given resouce
   string unique_tag = 10;
@@ -660,20 +660,23 @@ message StorageNode {
   map<string, string> node_labels = 16;
 }
 
-// StorageCluster represents the state of the cluster
+// StorageCluster represents the state and information about the cluster
 message StorageCluster {
   // Status of the cluster
   Status status = 1;
   // Id of the cluster
   string id = 2;
-  // NodeId is the id of the node servicing these requests
+  // The id of the node servicing these requests
   string node_id = 3;
-  // Nodes are a list of all the nodes on the cluster
+  // List of all the node ids in the cluster
   repeated string node_ids = 4;
 }
 
+// The OpenStorageCluster service provides the methods to manage the cluster
+// as a whole.
 service OpenStorageCluster {
-  // Enumerate lists all the nodes in the cluster.
+  // Enumerate returns information about the cluster and the unique ids of
+  // all the nodes in the cluster.
   rpc Enumerate(SdkClusterEnumerateRequest)
     returns (SdkClusterEnumerateResponse) {
       option(google.api.http) = {
@@ -681,7 +684,7 @@ service OpenStorageCluster {
       };
     }
 
-  // Inspect the node given a UUID.
+  // Inspect returns information about the specified node
   rpc Inspect(SdkClusterInspectRequest)
     returns (SdkClusterInspectResponse) {
       option(google.api.http) = {
@@ -851,7 +854,9 @@ service OpenStorageObjectstore {
       };
     }
 
-  // Updates provided objectstore status
+  // Updates provided objectstore status.
+  // This call can be used to stop the server while maintaining the same
+  // object storage id.
   rpc Update(SdkObjectstoreUpdateRequest)
     returns(SdkObjectstoreUpdateResponse){
       option(google.api.http) ={
@@ -1361,33 +1366,40 @@ message SdkVolumeSnapshotEnumerateResponse {
   repeated string volume_snapshot_ids = 1;
 }
 
+// This request is an empty request
 message SdkClusterEnumerateRequest {
 }
 
+// This response returns information about the cluster
 message SdkClusterEnumerateResponse {
   // Cluster information
   StorageCluster cluster = 1;
 }
 
+// Contains the request when inspecting a node
 message SdkClusterInspectRequest {
   // Id of node to inspect (required)
   string node_id = 1;
 }
 
+// This response contains information about the respective node requested
 message SdkClusterInspectResponse {
   // Node information
   StorageNode node = 1;
 }
 
+// This request contains the information needed to get alerts from
+// the storage system
 message SdkClusterAlertEnumerateRequest {
-  // Start time of alerts (required)
+  // Start time of alerts
   google.protobuf.Timestamp time_start = 1;
-  // End time of alerts (required)
+  // End time of alerts
   google.protobuf.Timestamp time_end = 2;
-  // Type of resource (required)
+  // Type of resource
   ResourceType resource = 3;
 }
 
+// This response provides a list of the alerts at the specified time.
 message SdkClusterAlertEnumerateResponse {
   // Information on the alerts requested
   repeated Alert alerts = 1;
