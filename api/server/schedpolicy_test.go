@@ -19,7 +19,7 @@ func TestSchedPolicyCreateSuccess(t *testing.T) {
 	name := "testsp1"
 	schedule := "freq:periodic\nperiod:120000\n"
 	// mock the cluster schedulePolicy response
-	tc.MockClusterSchedPolicy().
+	tc.MockCluster().
 		EXPECT().
 		SchedPolicyCreate(name, schedule).
 		Return(nil)
@@ -45,7 +45,7 @@ func TestSchedPolicyCreateFailed(t *testing.T) {
 	name := "testsp1"
 	schedule := "freq:periodic\nperiod:120000\n"
 	// mock the cluster schedulePolicy response
-	tc.MockClusterSchedPolicy().
+	tc.MockCluster().
 		EXPECT().
 		SchedPolicyCreate(name, schedule).
 		Return(fmt.Errorf("Not Implemented"))
@@ -72,7 +72,7 @@ func TestSchedPolicyUpdateSuccess(t *testing.T) {
 	name := "testsp1"
 	schedule := "freq:periodic\nperiod:120000\n"
 	// mock the cluster schedulePolicy response
-	tc.MockClusterSchedPolicy().
+	tc.MockCluster().
 		EXPECT().
 		SchedPolicyUpdate(name, schedule).
 		Return(nil)
@@ -98,7 +98,7 @@ func TestSchedPolicyUpdateFailed(t *testing.T) {
 	name := "testsp1"
 	schedule := "freq:periodic\nperiod:120000\n"
 	// mock the cluster schedulePolicy response
-	tc.MockClusterSchedPolicy().
+	tc.MockCluster().
 		EXPECT().
 		SchedPolicyUpdate(name, schedule).
 		Return(fmt.Errorf("Not Implemented"))
@@ -124,7 +124,33 @@ func TestSchedPolicyDeleteSuccess(t *testing.T) {
 
 	name := "testsp1"
 	// mock the cluster schedulePolicy response
-	tc.MockClusterSchedPolicy().
+	tc.MockCluster().
+		EXPECT().
+		SchedPolicyDelete(name).
+		Return(nil)
+
+	// create a cluster client to make the REST call
+	c, err := clusterclient.NewClusterClient(ts.URL, "v1")
+	assert.NoError(t, err)
+
+	// make the REST call
+	restClient := clusterclient.ClusterManager(c)
+	err = restClient.SchedPolicyDelete(name)
+
+	assert.NoError(t, err)
+}
+
+func TestSchedPolicyDeleteWithCaseSensitiveName(t *testing.T) {
+
+	// Create a new global test cluster
+	ts, tc := testClusterServer(t)
+	defer ts.Close()
+	defer tc.Finish()
+
+	name := "TestSchedPolicy1"
+	// mock the cluster schedulePolicy response
+	// this should be recived it as "TestSchedPolicy1" only
+	tc.MockCluster().
 		EXPECT().
 		SchedPolicyDelete(name).
 		Return(nil)
@@ -149,7 +175,7 @@ func TestSchedPolicyDeleteFailed(t *testing.T) {
 
 	name := "testsp1"
 	// mock the cluster schedulePolicy response
-	tc.MockClusterSchedPolicy().
+	tc.MockCluster().
 		EXPECT().
 		SchedPolicyDelete(name).
 		Return(fmt.Errorf("Not Implemented"))
@@ -175,7 +201,7 @@ func TestSchedPolicyEnumerateSuccess(t *testing.T) {
 
 	name := "testsp1"
 	// mock the cluster schedulePolicy response
-	tc.MockClusterSchedPolicy().
+	tc.MockCluster().
 		EXPECT().
 		SchedPolicyEnumerate().
 		Return([]*sched.SchedPolicy{
@@ -206,7 +232,7 @@ func TestSchedPolicyEnumerateFailed(t *testing.T) {
 	defer tc.Finish()
 
 	// mock the cluster schedulePolicy response
-	tc.MockClusterSchedPolicy().
+	tc.MockCluster().
 		EXPECT().
 		SchedPolicyEnumerate().
 		Return(nil, fmt.Errorf("Not Implemented"))
@@ -233,12 +259,42 @@ func TestSchedPolicyGetSuccess(t *testing.T) {
 
 	name := "testsp1"
 	// mock the cluster schedulePolicy response
-	tc.MockClusterSchedPolicy().
+	tc.MockCluster().
 		EXPECT().
 		SchedPolicyGet(name).
 		Return(&sched.SchedPolicy{
 			Name:     name,
 			Schedule: "testsched:test",
+		}, nil)
+
+	// create a cluster client to make the REST call
+	c, err := clusterclient.NewClusterClient(ts.URL, "v1")
+	assert.NoError(t, err)
+
+	// make the REST call
+	restClient := clusterclient.ClusterManager(c)
+	schedPolicy, err := restClient.SchedPolicyGet(name)
+
+	assert.NotNil(t, schedPolicy)
+	assert.EqualValues(t, schedPolicy.Name, name)
+	assert.NoError(t, err)
+}
+
+func TestSchedPolicyGetSuccessWithSensitiveName(t *testing.T) {
+
+	// Create a new global test cluster
+	ts, tc := testClusterServer(t)
+	defer ts.Close()
+	defer tc.Finish()
+
+	name := "testSchedPolicy@Periodic1"
+	// mock the cluster schedulePolicy response
+	tc.MockCluster().
+		EXPECT().
+		SchedPolicyGet(name).
+		Return(&sched.SchedPolicy{
+			Name:     name,
+			Schedule: "freq:periodic\nperiod:120000\n",
 		}, nil)
 
 	// create a cluster client to make the REST call
@@ -263,7 +319,7 @@ func TestSchedPolicyGetFailed(t *testing.T) {
 
 	name := "testsp"
 	// mock the cluster schedulePolicy response
-	tc.MockClusterSchedPolicy().
+	tc.MockCluster().
 		EXPECT().
 		SchedPolicyGet(name).
 		Return(nil, fmt.Errorf("Not Implemented"))
