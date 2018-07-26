@@ -1538,7 +1538,7 @@
           }
         }
       },
-      "title": "RuntimeStateMap is a list of name value mapping of driver specific runtime\ninformation.\nswagger:model"
+      "title": "RuntimeStateMap is a list of name value mapping of driver specific runtime \ninformation.\nswagger:model"
     },
     "apiSdkAwsCredentialRequest": {
       "type": "object",
@@ -3036,51 +3036,14 @@
           "items": {
             "$ref": "#/definitions/apiRuntimeStateMap"
           },
-          "description": "RuntimeState is a lst of name value mapping of driver specific runtime\ninformation."
+          "description": "RuntimeState is a lst of name value mapping of driver specific runtime \ninformation."
         },
         "error": {
           "type": "string",
           "description": "Error is the Last recorded error."
-        },
-        "volume_consumers": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/apiVolumeConsumer"
-          },
-          "title": "VolumeConsumers are entities that consume this volume"
         }
       },
       "title": "Volume represents an abstract storage volume.\nVolume represents an abstract storage volume.\nswagger:model"
-    },
-    "apiVolumeConsumer": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "title": "Name is the name of the volume consumer"
-        },
-        "namespace": {
-          "type": "string",
-          "title": "Namespace is the namespace of the volume consumer"
-        },
-        "type": {
-          "type": "string",
-          "title": "Type is the type of the consumer. E.g a Kubernetes pod"
-        },
-        "node_id": {
-          "type": "string",
-          "description": "NodeID is the identifier of the node on which the consumer is running. This\nidentifier would be from the perspective of the container runtime or\norchestrator under which the volume consumer resides. For example, NodeID\n can be name of a minion in Kubernetes."
-        },
-        "owner_name": {
-          "type": "string",
-          "title": "OwnerName is the name of the entity who owns this volume consumer"
-        },
-        "owner_type": {
-          "type": "string",
-          "description": "OwnerType is the type of the entity who owns this volume consumer. The type would\nbe from the perspective of the container runtime or the orchestrator under which\nthe volume consumer resides. For e.g OwnerType can be a Deployment in Kubernetes."
-        }
-      },
-      "title": "VolumeConsumer identifies a consumer for a Volume. An example of a VolumeConsumer\nwould be a Pod in Kubernetes who has mounted the PersistentVolumeClaim for the\nVolume\nswagger: model"
     },
     "apiVolumeLocator": {
       "type": "object",
@@ -3212,10 +3175,10 @@
           "format": "boolean",
           "description": "Journal is true if data for the volume goes into the journal."
         },
-        "sharedv4": {
+        "nfs": {
           "type": "boolean",
           "format": "boolean",
-          "description": "Sharedv4 is true if this volume can be accessed via sharedv4."
+          "description": "Nfs is true if this volume can be accessed via nfs."
         }
       },
       "title": "VolumeSpec has the properties needed to create a volume.\nswagger:model"
