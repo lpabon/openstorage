@@ -273,6 +273,9 @@ func start(c *cli.Context) error {
 			RestPort:   c.String("sdkrestport"),
 			DriverName: d,
 			Cluster:    cm,
+			Auth: sdk.AuthenticationConfig{
+				Enabled: true,
+			},
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to start SDK server for driver %s: %v", d, err)

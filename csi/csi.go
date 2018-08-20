@@ -86,9 +86,13 @@ func NewOsdCsiServer(config *OsdCsiServerConfig) (grpcserver.Server, error) {
 // Start is used to start the server.
 // It will return an error if the server is already running.
 func (s *OsdCsiServer) Start() error {
-	return s.GrpcServer.Start(func(grpcServer *grpc.Server) {
+	return s.GrpcServer.Start(func() *grpc.Server {
+		grpcServer := grpc.NewServer()
+
 		csi.RegisterIdentityServer(grpcServer, s)
 		csi.RegisterControllerServer(grpcServer, s)
 		csi.RegisterNodeServer(grpcServer, s)
+
+		return grpcServer
 	})
 }

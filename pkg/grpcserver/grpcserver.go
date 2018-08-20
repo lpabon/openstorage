@@ -72,16 +72,19 @@ func New(config *GrpcServerConfig) (*GrpcServer, error) {
 
 // Start is used to start the server.
 // It will return an error if the server is already runnig.
-func (s *GrpcServer) Start(register func(grpcServer *grpc.Server)) error {
+func (s *GrpcServer) Start(server func() *grpc.Server) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
+	if nil == server {
+		return fmt.Errorf("Server function has not been defined")
+	}
 
 	if s.running {
 		return fmt.Errorf("Server already running")
 	}
 
-	s.server = grpc.NewServer()
-	register(s.server)
+	s.server = server()
 	reflection.Register(s.server)
 
 	// Start listening for requests
