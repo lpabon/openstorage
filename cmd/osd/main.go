@@ -275,6 +275,11 @@ func start(c *cli.Context) error {
 			Cluster:    cm,
 			Auth: sdk.AuthenticationConfig{
 				Enabled: true,
+				Type:    sdk.AuthenticationTypeSharedSecret,
+				SharedSecret: &sdk.AuthenticationSecretsConfig{
+					AdminKey: "secret",
+					UserKey:  "secret",
+				},
 			},
 		})
 		if err != nil {

@@ -17,15 +17,14 @@
 package auth
 
 import (
-	"errors"
 	"fmt"
 
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
 var (
-	required_claims = []string{"sub", "iat", "exp"}
-	optional_claims = []string{"name", "email"}
+	requiredClaims = []string{"sub", "iat", "exp"}
+	optionalClaims = []string{"name", "email"}
 )
 
 type JwtAuth struct {
@@ -65,6 +64,7 @@ func (j *JwtAuth) AuthenticateToken(rawtoken string) (*Token, error) {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
 
+		var ok bool
 		claims, ok = token.Claims.(jwt.MapClaims)
 		if claims == nil || !ok {
 			return nil, fmt.Errorf("No claims found in token")
@@ -73,18 +73,18 @@ func (j *JwtAuth) AuthenticateToken(rawtoken string) (*Token, error) {
 		// Get claims
 		if sub, ok := claims["sub"]; ok {
 			switch sub {
-			case "admin":
+			case string(RoleAdministrator):
 				tokenInfo.Role = RoleAdministrator
 				return j.adminKey, nil
-			case "user":
+			case string(RoleUser):
 				tokenInfo.Role = RoleUser
 				return j.userKey, nil
 			default:
-				return nil, errors.New("Unknown user")
+				return nil, fmt.Errorf("Unknown role: %s", sub)
 			}
 		}
 
-		return nil, errors.New("Token missing iss claim")
+		return nil, fmt.Errorf("Token missing iss claim")
 	})
 	if err != nil {
 		return nil, err
@@ -95,12 +95,15 @@ func (j *JwtAuth) AuthenticateToken(rawtoken string) (*Token, error) {
 	}
 
 	// Check for required claims
-	for _, required_claim := range required_claims {
-		if _, ok := claims[required_claim]; !ok {
+	for _, requiredClaim := range requiredClaims {
+		if _, ok := claims[requiredClaim]; !ok {
 			// Claim missing
-			return nil, fmt.Errorf("Required claim %v missing from token", required_claim)
+			return nil, fmt.Errorf("Required claim %v missing from token", requiredClaim)
 		}
 	}
+
+	tokenInfo.Email, _ = claims["email"].(string)
+	tokenInfo.User, _ = claims["name"].(string)
 
 	return tokenInfo, nil
 }

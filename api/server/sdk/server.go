@@ -66,7 +66,7 @@ type AuthenticationConfig struct {
 	// Type of Authentication
 	Type AuthenticationType
 	// Shared secret configuration
-	SharedSecret AuthenticationSecretsConfig
+	SharedSecret *AuthenticationSecretsConfig
 }
 
 // ServerConfig provides the configuration to the SDK server
@@ -135,15 +135,15 @@ func New(config *ServerConfig) (*Server, error) {
 
 	var authenticator auth.Authenticator
 	authenticator = auth.NewJwtAuth(&auth.JwtAuthConfig{
-		AdminKey: []byte(config.Auth.SharedSecret.AdminKey)
-		UserKey: []byte(config.Auth.SharedSecret.UserKey)
+		AdminKey: []byte(config.Auth.SharedSecret.AdminKey),
+		UserKey:  []byte(config.Auth.SharedSecret.UserKey),
 	})
 
 	return &Server{
-		GrpcServer: gServer,
-		config:     *config,
+		GrpcServer:    gServer,
+		config:        *config,
 		authenticator: authenticator,
-		restPort:   config.RestPort,
+		restPort:      config.RestPort,
 		identityServer: &IdentityServer{
 			driver: d,
 		},
@@ -342,10 +342,11 @@ func (s *Server) auth(ctx context.Context) (context.Context, error) {
 	}
 	logrus.Infof("Token: %s", token)
 
-	tokenInfo, err := s.authenticator(token)
+	tokenInfo, err := s.authenticator.AuthenticateToken(token)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, err.Error())
 	}
+	logrus.Infof("token: %v", tokenInfo)
 	ctx = context.WithValue(ctx, "tokeninfo", tokenInfo)
 
 	return ctx, nil
