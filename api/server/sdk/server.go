@@ -25,21 +25,48 @@ import (
 	"github.com/libopenstorage/openstorage/alerts"
 
 	"github.com/gobuffalo/packr"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/api/spec"
 	"github.com/libopenstorage/openstorage/cluster"
+	"github.com/libopenstorage/openstorage/pkg/auth"
 	"github.com/libopenstorage/openstorage/pkg/grpcserver"
 	volumedrivers "github.com/libopenstorage/openstorage/volume/drivers"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
+// AuthenticationType is the types of authentication
+type AuthenticationType string
+
+const (
+	// AuthenticationTypeUnknown is a placeholder for unknown types
+	AuthenticationTypeUnknown AuthenticationType = "unknown"
+	// AuthenticationTypeSharedSecret is used when using JWT tokens signed with
+	// a shared secret
+	AuthenticationTypeSharedSecret AuthenticationType = "shared_secret"
+)
+
+// AuthenticationSecretsConfig is used when using shared secrets
+type AuthenticationSecretsConfig struct {
+	// Administrator role key
+	AdminKey string
+	// User role key
+	UserKey string
+}
+
 // AuthenticationConfig provides authentication configuration for the SDK server
 type AuthenticationConfig struct {
 	// Determine if the authentication should be enabled
 	Enabled bool
+	// Type of Authentication
+	Type AuthenticationType
+	// Shared secret configuration
+	SharedSecret AuthenticationSecretsConfig
 }
 
 // ServerConfig provides the configuration to the SDK server
@@ -67,6 +94,7 @@ type ServerConfig struct {
 type Server struct {
 	*grpcserver.GrpcServer
 
+	authenticator        auth.Authenticator
 	config               ServerConfig
 	restPort             string
 	clusterServer        *ClusterServer
@@ -108,10 +136,17 @@ func New(config *ServerConfig) (*Server, error) {
 		return nil, fmt.Errorf("Unable to setup server: %v", err)
 	}
 
+	var authenticator auth.Authenticator
+	authenticator = auth.NewJwtAuth(&auth.JwtAuthConfig{
+		AdminKey: []byte(config.Auth.SharedSecret.AdminKey),
+		UserKey:  []byte(config.Auth.SharedSecret.UserKey),
+	})
+
 	return &Server{
-		GrpcServer: gServer,
-		config:     *config,
-		restPort:   config.RestPort,
+		GrpcServer:    gServer,
+		config:        *config,
+		authenticator: authenticator,
+		restPort:      config.RestPort,
 		identityServer: &IdentityServer{
 			driver: d,
 		},
@@ -330,6 +365,12 @@ func (s *Server) auth(ctx context.Context) (context.Context, error) {
 		return nil, err
 	}
 	logrus.Infof("Token: %s", token)
+
+	tokenInfo, err := s.authenticator(token)
+	if err != nil {
+		return nil, status.Error(codes.PermissionDenied, err.Error())
+	}
+	ctx = context.WithValue(ctx, "tokeninfo", tokenInfo)
 
 	return ctx, nil
 }
