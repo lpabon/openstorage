@@ -24,6 +24,7 @@ import (
 
 	"github.com/gobuffalo/packr"
 
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -34,6 +35,12 @@ import (
 	"github.com/libopenstorage/openstorage/pkg/grpcserver"
 	volumedrivers "github.com/libopenstorage/openstorage/volume/drivers"
 )
+
+// AuthenticationConfig provides authentication configuration for the SDK server
+type AuthenticationConfig struct {
+	// Determine if the authentication should be enabled
+	Enabled bool
+}
 
 // ServerConfig provides the configuration to the SDK server
 type ServerConfig struct {
@@ -50,12 +57,15 @@ type ServerConfig struct {
 	DriverName string
 	// Cluster interface
 	Cluster cluster.Cluster
+	// Authentication Configuration
+	Auth AuthenticationConfig
 }
 
 // Server is an implementation of the gRPC SDK interface
 type Server struct {
 	*grpcserver.GrpcServer
 
+	config               ServerConfig
 	restPort             string
 	clusterServer        *ClusterServer
 	nodeServer           *NodeServer
@@ -97,6 +107,7 @@ func New(config *ServerConfig) (*Server, error) {
 
 	return &Server{
 		GrpcServer: gServer,
+		config:     *config,
 		restPort:   config.RestPort,
 		identityServer: &IdentityServer{
 			driver: d,
@@ -132,7 +143,15 @@ func New(config *ServerConfig) (*Server, error) {
 func (s *Server) Start() error {
 
 	// Start the gRPC Server
-	err := s.GrpcServer.Start(func(grpcServer *grpc.Server) {
+	err := s.GrpcServer.Start(func() *grpc.Server {
+		opts := make([]grpc.ServerOption, 0)
+
+		if s.config.Auth.Enabled {
+			opts = append(opts, grpc.UnaryInterceptor(grpc_auth.UnaryServerInterceptor(s.auth)))
+		}
+
+		grpcServer := grpc.NewServer(opts...)
+
 		api.RegisterOpenStorageClusterServer(grpcServer, s.clusterServer)
 		api.RegisterOpenStorageNodeServer(grpcServer, s.nodeServer)
 		api.RegisterOpenStorageObjectstoreServer(grpcServer, s.objectstoreServer)
@@ -141,6 +160,8 @@ func (s *Server) Start() error {
 		api.RegisterOpenStorageSchedulePolicyServer(grpcServer, s.schedulePolicyServer)
 		api.RegisterOpenStorageCloudBackupServer(grpcServer, s.cloudBackupServer)
 		api.RegisterOpenStorageIdentityServer(grpcServer, s.identityServer)
+
+		return grpcServer
 	})
 	if err != nil {
 		return err
@@ -276,4 +297,15 @@ func (s *Server) restServerSetupHandlers() (*http.ServeMux, error) {
 	mux.Handle("/", gmux)
 
 	return mux, nil
+}
+
+// Funtion defined grpc_auth.AuthFunc()
+func (s *Server) auth(ctx context.Context) (context.Context, error) {
+	token, err := grpc_auth.AuthFromMD(ctx, "bearer")
+	if err != nil {
+		return nil, err
+	}
+	logrus.Infof("Token: %s", token)
+
+	return ctx, nil
 }

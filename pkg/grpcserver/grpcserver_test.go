@@ -45,9 +45,10 @@ func newTestServer(t *testing.T) *testServer {
 	// Test Start
 	var testGrpcServer *grpc.Server
 	startCalled := false
-	err = tester.server.Start(func(grpcServer *grpc.Server) {
-		testGrpcServer = grpcServer
+	err = tester.server.Start(func() *grpc.Server {
+		testGrpcServer = grpc.NewServer()
 		startCalled = true
+		return testGrpcServer
 	})
 	assert.Nil(t, err)
 	assert.NotNil(t, testGrpcServer)
@@ -114,20 +115,23 @@ func TestGrpcServerStart(t *testing.T) {
 	// Check if we can still talk to the server
 	// after starting multiple times.
 	called := false
-	err := s.Server().Start(func(grpcserver *grpc.Server) {
+	err := s.Server().Start(func() *grpc.Server {
 		called = true
+		return grpc.NewServer()
 	})
 	assert.False(t, called)
 	assert.True(t, s.Server().IsRunning())
 	assert.NotNil(t, err)
-	err = s.Server().Start(func(grpcserver *grpc.Server) {
+	err := s.Server().Start(func() *grpc.Server {
 		called = true
+		return grpc.NewServer()
 	})
 	assert.False(t, called)
 	assert.True(t, s.Server().IsRunning())
 	assert.NotNil(t, err)
-	err = s.Server().Start(func(grpcserver *grpc.Server) {
+	err := s.Server().Start(func() *grpc.Server {
 		called = true
+		return grpc.NewServer()
 	})
 	assert.False(t, called)
 	assert.True(t, s.Server().IsRunning())
