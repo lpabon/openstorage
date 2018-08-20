@@ -25,6 +25,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"runtime"
@@ -46,6 +47,7 @@ import (
 	"github.com/libopenstorage/openstorage/csi"
 	"github.com/libopenstorage/openstorage/graph/drivers"
 	"github.com/libopenstorage/openstorage/objectstore"
+	"github.com/libopenstorage/openstorage/pkg/auth"
 	"github.com/libopenstorage/openstorage/schedpolicy"
 	"github.com/libopenstorage/openstorage/volume"
 	"github.com/libopenstorage/openstorage/volume/drivers"
@@ -343,6 +345,8 @@ func start(c *cli.Context) error {
 			RestPort:   c.String("sdkrestport"),
 			DriverName: d,
 			Cluster:    cm,
+			Auth:       setupAuth(),
+			Tls:        setupSdkTls(),
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to start SDK server for driver %s: %v", d, err)
@@ -403,4 +407,45 @@ func wrapAction(f func(*cli.Context) error) func(*cli.Context) {
 			os.Exit(1)
 		}
 	}
+}
+
+func setupAuth() *auth.JwtAuthConfig {
+	var err error
+
+	authConfig := &auth.JwtAuthConfig{
+		SharedSecret: []byte(os.Getenv("OPENSTORAGE_AUTH_SHAREDSECRET")),
+	}
+
+	// Read RSA file
+	if rsaFile := os.Getenv("OPENSTORAGE_AUTH_RSA_PUBKEY"); len(rsaFile) != 0 {
+		authConfig.RsaPublicPem, err = ioutil.ReadFile(rsaFile)
+		if err != nil {
+			logrus.Errorf("Failed to read %s", rsaFile)
+		}
+	}
+
+	// Read Ecds file
+	if ecdsFile := os.Getenv("OPENSTORAGE_AUTH_ECDS_PUBKEY"); len(ecdsFile) != 0 {
+		authConfig.ECDSPublicPem, err = ioutil.ReadFile(ecdsFile)
+		if err != nil {
+			logrus.Errorf("Failed to read %s", ecdsFile)
+		}
+	}
+
+	return authConfig
+}
+
+func setupSdkTls() *sdk.TLSConfig {
+	certFile := os.Getenv("OPENSTORAGE_CERTFILE")
+	keyFile := os.Getenv("OPENSTORAGE_KEYFILE")
+	if len(certFile) != 0 && len(keyFile) != 0 {
+		logrus.Infof("TLS %s and %s", certFile, keyFile)
+		return &sdk.TLSConfig{
+			CertFile: certFile,
+			KeyFile:  keyFile,
+		}
+	}
+	logrus.Info(">> NO TLS")
+
+	return nil
 }

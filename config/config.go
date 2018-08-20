@@ -40,6 +40,7 @@ type ClusterConfig struct {
 	LoggingURL        string
 	ManagementURL     string
 	FluentDHost       string
+	Authentication    bool `yaml:"authentication"`
 }
 
 // swagger:model

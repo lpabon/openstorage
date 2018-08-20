@@ -5,5 +5,6 @@ osd:
     nodeid: "1"
     schedulernodename: "node-1"
     clusterid: "mock"
+    authentication: true
   drivers:
     fake:
