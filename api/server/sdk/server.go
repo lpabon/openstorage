@@ -66,7 +66,7 @@ type AuthenticationConfig struct {
 	// Type of Authentication
 	Type AuthenticationType
 	// Shared secret configuration
-	SharedSecret AuthenticationSecretsConfig
+	SharedSecret *AuthenticationSecretsConfig
 }
 
 // ServerConfig provides the configuration to the SDK server
@@ -366,10 +366,11 @@ func (s *Server) auth(ctx context.Context) (context.Context, error) {
 	}
 	logrus.Infof("Token: %s", token)
 
-	tokenInfo, err := s.authenticator(token)
+	tokenInfo, err := s.authenticator.AuthenticateToken(token)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, err.Error())
 	}
+	logrus.Infof("token: %v", tokenInfo)
 	ctx = context.WithValue(ctx, "tokeninfo", tokenInfo)
 
 	return ctx, nil
