@@ -22,12 +22,16 @@ import (
 	"mime"
 	"net/http"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware"
+
 	"github.com/gobuffalo/packr"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -127,7 +131,7 @@ func New(config *ServerConfig) (*Server, error) {
 	var authenticator auth.Authenticator
 	if config.Auth.Enabled {
 		if config.Auth.SharedSecret != nil {
-			logrus.Info("Authentication enabled using shared secrets")
+			logrus.Info("SDK authentication enabled using shared secrets")
 			authenticator = auth.NewSharedSecret(&auth.SharedSecretConfig{
 				AdminKey: []byte(config.Auth.SharedSecret.AdminKey),
 				UserKey:  []byte(config.Auth.SharedSecret.UserKey),
@@ -187,13 +191,23 @@ func (s *Server) Start() error {
 
 	// Start the gRPC Server
 	err := s.GrpcServer.Start(func() *grpc.Server {
-		opts := make([]grpc.ServerOption, 0)
+		var grpcServer *grpc.Server
 
 		if s.config.Auth.Enabled {
-			opts = append(opts, grpc.UnaryInterceptor(grpc_auth.UnaryServerInterceptor(s.auth)))
+			grpcServer = grpc.NewServer(grpc.UnaryInterceptor(
+				grpc_middleware.ChainUnaryServer(
+					grpc_auth.UnaryServerInterceptor(s.auth),
+					s.authorizationServerInterceptor,
+					s.loggerServerInterceptor,
+					grpc_recovery.UnaryServerInterceptor(),
+				)))
+		} else {
+			grpcServer = grpc.NewServer(grpc.UnaryInterceptor(
+				grpc_middleware.ChainUnaryServer(
+					s.loggerServerInterceptor,
+					grpc_recovery.UnaryServerInterceptor(),
+				)))
 		}
-
-		grpcServer := grpc.NewServer(opts...)
 
 		api.RegisterOpenStorageClusterServer(grpcServer, s.clusterServer)
 		api.RegisterOpenStorageNodeServer(grpcServer, s.nodeServer)
@@ -356,4 +370,46 @@ func (s *Server) auth(ctx context.Context) (context.Context, error) {
 	ctx = context.WithValue(ctx, "tokeninfo", tokenInfo)
 
 	return ctx, nil
+}
+
+func (s *Server) loggerServerInterceptor(
+	ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (interface{}, error) {
+	tokenInfo, ok := ctx.Value("tokeninfo").(*auth.Token)
+	if !ok {
+		return nil, status.Errorf(codes.Internal, "Authorization called without token")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"user":   tokenInfo.User,
+		"email":  tokenInfo.Email,
+		"role":   tokenInfo.Role,
+		"method": info.FullMethod,
+	}).Info("called")
+
+	return handler(ctx, req)
+}
+
+func (s *Server) authorizationServerInterceptor(
+	ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (interface{}, error) {
+	tokenInfo, ok := ctx.Value("tokeninfo").(*auth.Token)
+	if !ok {
+		return nil, status.Errorf(codes.Internal, "Authorization called without token")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"user":   tokenInfo.User,
+		"email":  tokenInfo.Email,
+		"role":   tokenInfo.Role,
+		"method": info.FullMethod,
+	}).Info("called")
+
+	return handler(ctx, req)
 }
