@@ -274,6 +274,7 @@ func start(c *cli.Context) error {
 			DriverName: d,
 			Cluster:    cm,
 			Auth:       setupAuth(cfg),
+			Tls:        setupSdkTls(),
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to start SDK server for driver %s: %v", d, err)
@@ -364,4 +365,19 @@ func setupAuth(cfg *config.Config) sdk.AuthenticationConfig {
 	}
 
 	return authCfg
+}
+
+func setupSdkTls() *sdk.TLSConfig {
+	certFile := os.Getenv("OPENSTORAGE_CERTFILE")
+	keyFile := os.Getenv("OPENSTORAGE_KEYFILE")
+	if len(certFile) != 0 && len(keyFile) != 0 {
+		logrus.Infof("TLS %s and %s", certFile, keyFile)
+		return &sdk.TLSConfig{
+			CertFile: certFile,
+			KeyFile:  keyFile,
+		}
+	}
+	logrus.Info(">> NO TLS")
+
+	return nil
 }
