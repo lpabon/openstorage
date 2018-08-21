@@ -40,6 +40,9 @@ type ClusterConfig struct {
 	LoggingURL        string
 	ManagementURL     string
 	FluentDHost       string
+	Authentication    bool   `yaml:"authentication"`
+	AdminKey          string `yaml:"adminkey"`
+	UserKey           string `yaml:"userkey"`
 }
 
 // swagger:model

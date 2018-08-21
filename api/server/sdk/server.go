@@ -126,6 +126,20 @@ func New(config *ServerConfig) (*Server, error) {
 		return nil, fmt.Errorf("Unable to get driver %s info: %s", config.DriverName, err.Error())
 	}
 
+	// Setup authentication
+	var authenticator auth.Authenticator
+	if config.Auth.Enabled {
+		if config.Auth.SharedSecret != nil {
+			logrus.Info("Authentication enabled using shared secrets")
+			authenticator = auth.NewSharedSecret(&auth.SharedSecretConfig{
+				AdminKey: []byte(config.Auth.SharedSecret.AdminKey),
+				UserKey:  []byte(config.Auth.SharedSecret.UserKey),
+			})
+		} else {
+			return nil, fmt.Errorf("Authentication enabled without authentication configuartion provided")
+		}
+	}
+
 	// Create gRPC server
 	gServer, err := grpcserver.New(&grpcserver.GrpcServerConfig{
 		Name:    "SDK",
@@ -135,12 +149,6 @@ func New(config *ServerConfig) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Unable to setup server: %v", err)
 	}
-
-	var authenticator auth.Authenticator
-	authenticator = auth.NewJwtAuth(&auth.JwtAuthConfig{
-		AdminKey: []byte(config.Auth.SharedSecret.AdminKey),
-		UserKey:  []byte(config.Auth.SharedSecret.UserKey),
-	})
 
 	return &Server{
 		GrpcServer:    gServer,
@@ -364,13 +372,11 @@ func (s *Server) auth(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, err
 	}
-	logrus.Infof("Token: %s", token)
 
 	tokenInfo, err := s.authenticator.AuthenticateToken(token)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, err.Error())
 	}
-	logrus.Infof("token: %v", tokenInfo)
 	ctx = context.WithValue(ctx, "tokeninfo", tokenInfo)
 
 	return ctx, nil
