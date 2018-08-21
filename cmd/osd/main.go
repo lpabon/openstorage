@@ -359,7 +359,7 @@ func setupAuth(cfg *config.Config) sdk.AuthenticationConfig {
 		if key := os.Getenv("OPENSTORAGE_AUTH_USERKEY"); len(key) != 0 {
 			authCfg.SharedSecret.UserKey = key
 		} else {
-			authCfg.SharedSecret.UserKey = cfg.Osd.ClusterConfig.AdminKey
+			authCfg.SharedSecret.UserKey = cfg.Osd.ClusterConfig.UserKey
 		}
 	}
 
