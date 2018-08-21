@@ -27,30 +27,30 @@ var (
 	optionalClaims = []string{"name", "email"}
 )
 
-type JwtAuth struct {
+type SharedSecret struct {
 	adminKey []byte
 	userKey  []byte
 }
 
-type JwtAuthConfig struct {
+type SharedSecretConfig struct {
 	AdminKey []byte
 	UserKey  []byte
 }
 
-func NewJwtAuth(config *JwtAuthConfig) *JwtAuth {
+func NewSharedSecret(config *SharedSecretConfig) *SharedSecret {
 
-	j := &JwtAuth{}
+	j := &SharedSecret{}
 	j.adminKey = config.AdminKey
 	j.userKey = config.UserKey
 
 	return j
 }
 
-func (j *JwtAuth) Type() string {
-	return "jwt"
+func (j *SharedSecret) Type() string {
+	return "shared secret"
 }
 
-func (j *JwtAuth) AuthenticateToken(rawtoken string) (*Token, error) {
+func (j *SharedSecret) AuthenticateToken(rawtoken string) (*Token, error) {
 
 	// Parse token
 	var claims jwt.MapClaims
