@@ -807,6 +807,12 @@
 			"revisionTime": "2018-05-22T10:52:15Z"
 		},
 		{
+			"checksumSHA1": "mlh8jfZweEtX64NHqAyXHKm94kA=",
+			"path": "github.com/grpc-ecosystem/go-grpc-middleware/recovery",
+			"revision": "e9c5d9645c437ab1b204cff969a2c0fb16cd4276",
+			"revisionTime": "2018-05-22T10:52:15Z"
+		},
+		{
 			"checksumSHA1": "L5z1C445GhhQmDKSisTFv754LdU=",
 			"path": "github.com/grpc-ecosystem/go-grpc-middleware/util/metautils",
 			"revision": "e9c5d9645c437ab1b204cff969a2c0fb16cd4276",
