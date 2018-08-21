@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"strings"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/libopenstorage/openstorage/alerts"
@@ -403,7 +404,7 @@ func (s *Server) loggerServerInterceptor(
 ) (interface{}, error) {
 	tokenInfo, ok := ctx.Value("tokeninfo").(*auth.Token)
 	if !ok {
-		return nil, status.Errorf(codes.Internal, "Authorization called without token")
+		return nil, status.Errorf(codes.Internal, "Logging called without token")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -427,12 +428,30 @@ func (s *Server) authorizationServerInterceptor(
 		return nil, status.Errorf(codes.Internal, "Authorization called without token")
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"user":   tokenInfo.User,
-		"email":  tokenInfo.Email,
-		"role":   tokenInfo.Role,
-		"method": info.FullMethod,
-	}).Info("called")
+	// Check user role
+	if auth.RoleUser == tokenInfo.Role {
+		// User is not allowed the following services and/or methods
+		// Example service:
+		//    openstorage.api.OpenStorageNode
+		// Example method:
+		//    openstorage.api.OpenStorageCluster/InspectCurrent
+		//
+		blacklist := []string{
+			"openstorage.api.OpenStorageCluster",
+			"openstorage.api.OpenStorageNode",
+		}
+
+		for _, notallowed := range blacklist {
+			if strings.Contains(info.FullMethod, notallowed) {
+				return nil, status.Errorf(
+					codes.PermissionDenied,
+					"Not role %s is not authorized to use %s",
+					tokenInfo.Role,
+					info.FullMethod,
+				)
+			}
+		}
+	}
 
 	return handler(ctx, req)
 }
