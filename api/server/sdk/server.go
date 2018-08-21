@@ -28,6 +28,7 @@ import (
 	"github.com/gobuffalo/packr"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
@@ -74,6 +75,11 @@ type AuthenticationConfig struct {
 	SharedSecret *AuthenticationSecretsConfig
 }
 
+type TLSConfig struct {
+	CertFile string
+	KeyFile  string
+}
+
 // ServerConfig provides the configuration to the SDK server
 type ServerConfig struct {
 	// Net is the transport for gRPC: unix, tcp, etc.
@@ -91,6 +97,8 @@ type ServerConfig struct {
 	Cluster cluster.Cluster
 	// Authentication Configuration
 	Auth AuthenticationConfig
+	// TLS Configuration
+	Tls *TLSConfig
 }
 
 // Server is an implementation of the gRPC SDK interface
@@ -190,25 +198,39 @@ func New(config *ServerConfig) (*Server, error) {
 // It will return an error if the server is already running.
 func (s *Server) Start() error {
 
+	opts := make([]grpc.ServerOption, 0)
+	if s.config.Tls != nil {
+		creds, err := credentials.NewServerTLSFromFile(s.config.Tls.CertFile, s.config.Tls.KeyFile)
+		if err != nil {
+			return fmt.Errorf("Failed to create credentials from cert files: %v", err)
+		}
+		opts = append(opts, grpc.Creds(creds))
+		logrus.Info("SDK TLS enabled")
+	} else {
+		logrus.Info("SDK TLS disabled")
+	}
+
+	if s.config.Auth.Enabled {
+		opts = append(opts, grpc.UnaryInterceptor(
+			grpc_middleware.ChainUnaryServer(
+				grpc_auth.UnaryServerInterceptor(s.auth),
+				s.authorizationServerInterceptor,
+				s.loggerServerInterceptor,
+				grpc_recovery.UnaryServerInterceptor(),
+			)))
+	} else {
+		opts = append(opts, grpc.UnaryInterceptor(
+			grpc_middleware.ChainUnaryServer(
+				s.loggerServerInterceptor,
+				grpc_recovery.UnaryServerInterceptor(),
+			)))
+	}
+
 	// Start the gRPC Server
 	err := s.GrpcServer.Start(func() *grpc.Server {
 		var grpcServer *grpc.Server
 
-		if s.config.Auth.Enabled {
-			grpcServer = grpc.NewServer(grpc.UnaryInterceptor(
-				grpc_middleware.ChainUnaryServer(
-					grpc_auth.UnaryServerInterceptor(s.auth),
-					s.authorizationServerInterceptor,
-					s.loggerServerInterceptor,
-					grpc_recovery.UnaryServerInterceptor(),
-				)))
-		} else {
-			grpcServer = grpc.NewServer(grpc.UnaryInterceptor(
-				grpc_middleware.ChainUnaryServer(
-					s.loggerServerInterceptor,
-					grpc_recovery.UnaryServerInterceptor(),
-				)))
-		}
+		grpcServer = grpc.NewServer(opts...)
 
 		api.RegisterOpenStorageClusterServer(grpcServer, s.clusterServer)
 		api.RegisterOpenStorageNodeServer(grpcServer, s.nodeServer)
@@ -379,17 +401,18 @@ func (s *Server) loggerServerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	tokenInfo, ok := ctx.Value("tokeninfo").(*auth.Token)
-	if !ok {
-		return nil, status.Errorf(codes.Internal, "Logging called without token")
+	if tokenInfo, ok := ctx.Value("tokeninfo").(*auth.Token); ok {
+		logrus.WithFields(logrus.Fields{
+			"user":   tokenInfo.User,
+			"email":  tokenInfo.Email,
+			"role":   tokenInfo.Role,
+			"method": info.FullMethod,
+		}).Info("called")
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"method": info.FullMethod,
+		}).Info("called")
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"user":   tokenInfo.User,
-		"email":  tokenInfo.Email,
-		"role":   tokenInfo.Role,
-		"method": info.FullMethod,
-	}).Info("called")
 
 	return handler(ctx, req)
 }
@@ -413,6 +436,7 @@ func (s *Server) authorizationServerInterceptor(
 		// Example method:
 		//    openstorage.api.OpenStorageCluster/InspectCurrent
 		//
+		// TODO: Make this configurable
 		blacklist := []string{
 			"openstorage.api.OpenStorageCluster",
 			"openstorage.api.OpenStorageNode",
