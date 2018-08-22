@@ -79,6 +79,10 @@ func newTestServer(t *testing.T) *testServer {
 		Net:        "tcp",
 		Address:    "127.0.0.1:0",
 		Cluster:    tester.c,
+		Tls: &TLSConfig{
+			CertFile: "/home/lpabon/git/golang/osd/src/github.com/libopenstorage/openstorage/cert.pem",
+			KeyFile:  "/home/lpabon/git/golang/osd/src/github.com/libopenstorage/openstorage/key.pem",
+		},
 	})
 	assert.Nil(t, err)
 	err = tester.server.Start()

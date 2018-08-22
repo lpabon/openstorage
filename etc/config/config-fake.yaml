@@ -3,5 +3,8 @@ osd:
   cluster:
     nodeid: "1"
     clusterid: "mock"
+    authentication: true
+    adminkey: "thisistheadminkey"
+    userkey: "thisistheuserkey"
   drivers:
     fake:
