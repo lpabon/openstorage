@@ -20,8 +20,10 @@ import (
 	"context"
 	"fmt"
 	"mime"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/libopenstorage/openstorage/alerts"
@@ -231,9 +233,7 @@ func (s *Server) Start() error {
 
 	// Start the gRPC Server
 	err := s.GrpcServer.Start(func() *grpc.Server {
-		var grpcServer *grpc.Server
-
-		grpcServer = grpc.NewServer(opts...)
+		grpcServer := grpc.NewServer(opts...)
 
 		api.RegisterOpenStorageClusterServer(grpcServer, s.clusterServer)
 		api.RegisterOpenStorageNodeServer(grpcServer, s.nodeServer)
@@ -268,7 +268,14 @@ func (s *Server) startRestServer() error {
 	ready := make(chan bool)
 	go func() {
 		ready <- true
-		err := http.ListenAndServe(":"+s.restPort, mux)
+		var err error
+		address := ":" + s.restPort
+		if s.config.Tls != nil {
+			err = http.ListenAndServeTLS(address, s.config.Tls.CertFile, s.config.Tls.KeyFile, mux)
+		} else {
+			err = http.ListenAndServe(address, mux)
+		}
+
 		if err != nil {
 			logrus.Fatalf("Unable to start SDK REST gRPC Gateway: %s\n",
 				err.Error())
@@ -306,95 +313,103 @@ func (s *Server) restServerSetupHandlers() (*http.ServeMux, error) {
 
 	// Create a router just for HTTP REST gRPC Server Gateway
 	gmux := runtime.NewServeMux()
-	err := api.RegisterOpenStorageClusterHandlerFromEndpoint(
-		context.Background(),
-		gmux,
-		s.Address(),
-		[]grpc.DialOption{grpc.WithInsecure()})
-	if err != nil {
-		return nil, err
+
+	// REST Gateway Handlers
+	handlers := []func(context.Context, *runtime.ServeMux, *grpc.ClientConn) (err error){
+		api.RegisterOpenStorageClusterHandler,
+		/*
+			api.RegisterOpenStorageNodeHandlerFromEndpoint,
+			api.RegisterOpenStorageVolumeHandlerFromEndpoint,
+			api.RegisterOpenStorageObjectstoreHandlerFromEndpoint,
+			api.RegisterOpenStorageCredentialsHandlerFromEndpoint,
+			api.RegisterOpenStorageSchedulePolicyHandlerFromEndpoint,
+			api.RegisterOpenStorageCloudBackupHandlerFromEndpoint,
+			api.RegisterOpenStorageIdentityHandlerFromEndpoint,
+		*/
 	}
 
-	err = api.RegisterOpenStorageNodeHandlerFromEndpoint(
-		context.Background(),
-		gmux,
-		s.Address(),
-		[]grpc.DialOption{grpc.WithInsecure()})
+	// Determine if TLS is needed for the REST Gateway to connect to the gRPC server
+	/*
+		var opts []grpc.DialOption
+		var creds credentials.TransportCredentials
+		if s.config.Tls != nil {
+			var err error
+			creds, err = credentials.NewClientTLSFromFile(s.config.Tls.CertFile, "")
+			if err != nil {
+				return nil, fmt.Errorf("Failed to setup credentials for REST gateway: %v", err)
+			}
+			opts = []grpc.DialOption{grpc.WithTransportCredentials(creds), grpc.WithBlock(), grpc.FailOnNonTempDialError(true)}
+			logrus.Info(">>> HERE")
+		} else {
+			opts = []grpc.DialOption{grpc.WithInsecure()}
+			logrus.Info(">>> insecure")
+		}
+	*/
+
+	creds, err := credentials.NewClientTLSFromFile(s.config.Tls.CertFile, "example.com")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to setup credentials for REST gateway: %v", err)
+	}
+	dialer := func(address string, timeout time.Duration) (net.Conn, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		add := s.Address()
+		conn, err := net.Dial("tcp", add)
+		if err != nil {
+			logrus.Errorf("REST Gateway failed to dial gRPC server: %v", err)
+			return nil, err
+		}
+		conn, _, err = creds.ClientHandshake(ctx, s.Address(), conn)
+		if err != nil {
+			logrus.Errorf("REST Gateway failed to connect gRPC server: %v", err)
+			return nil, err
+		}
+
+		return conn, nil
+	}
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithBlock(),
+		grpc.FailOnNonTempDialError(true),
+		grpc.WithDialer(dialer),
 	}
 
-	err = api.RegisterOpenStorageVolumeHandlerFromEndpoint(
-		context.Background(),
-		gmux,
-		s.Address(),
-		[]grpc.DialOption{grpc.WithInsecure()})
+	conn, err := grpc.Dial(s.Address(), opts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Unable to setup REST Gateway connection to gRPC Server: %v", err)
 	}
 
-	err = api.RegisterOpenStorageObjectstoreHandlerFromEndpoint(
-		context.Background(),
-		gmux,
-		s.Address(),
-		[]grpc.DialOption{grpc.WithInsecure()})
-	if err != nil {
-		return nil, err
+	// Register the REST Gateway handlers
+	for _, handler := range handlers {
+		err := handler(context.Background(), gmux, conn)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	err = api.RegisterOpenStorageCredentialsHandlerFromEndpoint(
-		context.Background(),
-		gmux,
-		s.Address(),
-		[]grpc.DialOption{grpc.WithInsecure()})
-	if err != nil {
-		return nil, err
-	}
+	/*
+		err = api.RegisterOpenStorageMountAttachHandlerFromEndpoint(
+			context.Background(),
+			gmux,
+			s.Address(),
+			[]grpc.DialOption{grpc.WithInsecure()})
+		if err != nil {
+			return nil, err
+		}
 
-	err = api.RegisterOpenStorageSchedulePolicyHandlerFromEndpoint(
-		context.Background(),
-		gmux,
-		s.Address(),
-		[]grpc.DialOption{grpc.WithInsecure()})
-	if err != nil {
-		return nil, err
-	}
-
-	err = api.RegisterOpenStorageCloudBackupHandlerFromEndpoint(
-		context.Background(),
-		gmux,
-		s.Address(),
-		[]grpc.DialOption{grpc.WithInsecure()})
-	if err != nil {
-		return nil, err
-	}
-
-	err = api.RegisterOpenStorageIdentityHandlerFromEndpoint(
-		context.Background(),
-		gmux,
-		s.Address(),
-		[]grpc.DialOption{grpc.WithInsecure()})
-	if err != nil {
-		return nil, err
-	}
-
-	err = api.RegisterOpenStorageMountAttachHandlerFromEndpoint(
-		context.Background(),
-		gmux,
-		s.Address(),
-		[]grpc.DialOption{grpc.WithInsecure()})
-	if err != nil {
-		return nil, err
-	}
-
-	err = api.RegisterOpenStorageAlertsHandlerFromEndpoint(
-		context.Background(),
-		gmux,
-		s.Address(),
-		[]grpc.DialOption{grpc.WithInsecure()})
-	if err != nil {
-		return nil, err
-	}
+		err = api.RegisterOpenStorageAlertsHandlerFromEndpoint(
+			context.Background(),
+			gmux,
+			s.Address(),
+			[]grpc.DialOption{grpc.WithInsecure()})
+		if err != nil {
+			return nil, err
+		}
+	*/
+	clustergrpc := api.NewOpenStorageClusterClient(conn)
+	ci, err := clustergrpc.InspectCurrent(context.Background(), &api.SdkClusterInspectCurrentRequest{})
+	fmt.Printf("%v e:%v", ci, err)
 
 	// Pass all other unhandled paths to the gRPC gateway
 	mux.Handle("/", gmux)
