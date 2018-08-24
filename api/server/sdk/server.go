@@ -57,6 +57,8 @@ const (
 	// AuthenticationTypeSharedSecret is used when using JWT tokens signed with
 	// a shared secret
 	AuthenticationTypeSharedSecret AuthenticationType = "shared_secret"
+	// Default unix domain socket location
+	defaultUnixDomainSocket = "/run/%s.sock"
 )
 
 // AuthenticationSecretsConfig is used when using shared secrets
@@ -93,13 +95,18 @@ type ServerConfig struct {
 	// RestAdress is the port number. Example: 9110
 	// For the gRPC REST Gateway.
 	RestPort string
+	// Unix domain socket for local communication. This socket
+	// will be used by the REST Gateway to communicate with the gRPC server.
+	// Only set for testing. Having a '%s' can be supported to use the
+	// name of the driver as the driver name.
+	Socket string
 	// The OpenStorage driver to use
 	DriverName string
 	// Cluster interface
 	Cluster cluster.Cluster
-	// Authentication Configuration
+	// Authentication configuration
 	Auth AuthenticationConfig
-	// TLS Configuration
+	// Secure Tls configuration
 	Tls *TLSConfig
 }
 
@@ -107,6 +114,7 @@ type ServerConfig struct {
 type Server struct {
 	*grpcserver.GrpcServer
 
+	socketServer         *Server
 	authenticator        auth.Authenticator
 	config               ServerConfig
 	restPort             string
@@ -137,6 +145,16 @@ func New(config *ServerConfig) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get driver %s info: %s", config.DriverName, err.Error())
 	}
+
+	// Create socket server
+	socketName := defaultUnixDomainSocket
+	if (config.Socket) != 0 {
+		socketName = config.Socket
+	}
+	socketServer, error := New(&ServerConfig{
+		Net:     "unix",
+		Address: fmt.Sprintf(socketName, d.Name()),
+	})
 
 	// Setup authentication
 	var authenticator auth.Authenticator
