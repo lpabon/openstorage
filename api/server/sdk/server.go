@@ -57,7 +57,7 @@ const (
 	// a shared secret
 	AuthenticationTypeSharedSecret AuthenticationType = "shared_secret"
 	// Default unix domain socket location
-	defaultUnixDomainSocket = "/run/%s.sock"
+	DefaultUnixDomainSocket = "/run/%s.sock"
 )
 
 // AuthenticationSecretsConfig is used when using shared secrets
@@ -149,14 +149,16 @@ func New(config *ServerConfig) (*Server, error) {
 	}
 
 	// Create socket server
-	socketName := defaultUnixDomainSocket
-	if (config.Socket) != 0 {
-		socketName = config.Socket
+	if config.Net != "unix" {
+		socketName := defaultUnixDomainSocket
+		if (config.Socket) != 0 {
+			socketName = config.Socket
+		}
+		socketServer, error := New(&ServerConfig{
+			Net:     "unix",
+			Address: fmt.Sprintf(socketName, d.Name()),
+		})
 	}
-	socketServer, error := New(&ServerConfig{
-		Net:     "unix",
-		Address: fmt.Sprintf(socketName, d.Name()),
-	})
 
 	// Setup authentication
 	var authenticator auth.Authenticator
