@@ -17,13 +17,7 @@ limitations under the License.
 package sdk
 
 import (
-	"context"
 	"fmt"
-	"mime"
-	"net"
-	"net/http"
-	"strings"
-	"time"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/libopenstorage/openstorage/alerts"
@@ -31,12 +25,12 @@ import (
 	"github.com/gobuffalo/packr"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/status"
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/api/spec"
 	"github.com/libopenstorage/openstorage/cluster"
@@ -115,10 +109,9 @@ type ServerConfig struct {
 type Server struct {
 	*grpcserver.GrpcServer
 
-	socketServer         *Server
-	authenticator        auth.Authenticator
-	config               ServerConfig
-	restPort             string
+	authenticator auth.Authenticator
+	config        ServerConfig
+
 	clusterServer        *ClusterServer
 	nodeServer           *NodeServer
 	volumeServer         *VolumeServer
@@ -146,18 +139,6 @@ func New(config *ServerConfig) (*Server, error) {
 	d, err := volumedrivers.Get(config.DriverName)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get driver %s info: %s", config.DriverName, err.Error())
-	}
-
-	// Create socket server
-	if config.Net != "unix" {
-		socketName := defaultUnixDomainSocket
-		if (config.Socket) != 0 {
-			socketName = config.Socket
-		}
-		socketServer, error := New(&ServerConfig{
-			Net:     "unix",
-			Address: fmt.Sprintf(socketName, d.Name()),
-		})
 	}
 
 	// Setup authentication
@@ -223,6 +204,7 @@ func New(config *ServerConfig) (*Server, error) {
 // It will return an error if the server is already running.
 func (s *Server) Start() error {
 
+	// Setup https if certs have been provided
 	opts := make([]grpc.ServerOption, 0)
 	if s.config.Tls != nil {
 		creds, err := credentials.NewServerTLSFromFile(s.config.Tls.CertFile, s.config.Tls.KeyFile)
@@ -235,6 +217,7 @@ func (s *Server) Start() error {
 		logrus.Info("SDK TLS disabled")
 	}
 
+	// Setup authentication and authorization using interceptors if auth is enabled
 	if s.config.Auth.Enabled {
 		opts = append(opts, grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
@@ -271,42 +254,10 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
-	if len(s.restPort) != 0 {
-		return s.startRestServer()
-	}
 	return nil
 }
 
-// startRestServer starts the HTTP/REST gRPC gateway.
-func (s *Server) startRestServer() error {
-
-	mux, err := s.restServerSetupHandlers()
-	if err != nil {
-		return err
-	}
-
-	ready := make(chan bool)
-	go func() {
-		ready <- true
-		var err error
-		address := ":" + s.restPort
-		if s.config.Tls != nil {
-			err = http.ListenAndServeTLS(address, s.config.Tls.CertFile, s.config.Tls.KeyFile, mux)
-		} else {
-			err = http.ListenAndServe(address, mux)
-		}
-
-		if err != nil {
-			logrus.Fatalf("Unable to start SDK REST gRPC Gateway: %s\n",
-				err.Error())
-		}
-	}()
-	<-ready
-	logrus.Infof("SDK gRPC REST Gateway started on port :%s", s.restPort)
-
-	return nil
-}
-
+/*
 // restServerSetupHandlers sets up the handlers to the swagger ui and
 // to the gRPC REST Gateway.
 func (s *Server) restServerSetupHandlers() (*http.ServeMux, error) {
@@ -345,7 +296,7 @@ func (s *Server) restServerSetupHandlers() (*http.ServeMux, error) {
 			api.RegisterOpenStorageSchedulePolicyHandlerFromEndpoint,
 			api.RegisterOpenStorageCloudBackupHandlerFromEndpoint,
 			api.RegisterOpenStorageIdentityHandlerFromEndpoint,
-		*/
+		////
 	}
 
 	// Determine if TLS is needed for the REST Gateway to connect to the gRPC server
@@ -364,7 +315,7 @@ func (s *Server) restServerSetupHandlers() (*http.ServeMux, error) {
 			opts = []grpc.DialOption{grpc.WithInsecure()}
 			logrus.Info(">>> insecure")
 		}
-	*/
+	/////
 
 	creds, err := credentials.NewClientTLSFromFile(s.config.Tls.CertFile, "example.com")
 	if err != nil {
@@ -426,7 +377,7 @@ func (s *Server) restServerSetupHandlers() (*http.ServeMux, error) {
 		if err != nil {
 			return nil, err
 		}
-	*/
+	//////
 	clustergrpc := api.NewOpenStorageClusterClient(conn)
 	ci, err := clustergrpc.InspectCurrent(context.Background(), &api.SdkClusterInspectCurrentRequest{})
 	fmt.Printf("%v e:%v", ci, err)
@@ -514,3 +465,4 @@ func (s *Server) authorizationServerInterceptor(
 
 	return handler(ctx, req)
 }
+*/
