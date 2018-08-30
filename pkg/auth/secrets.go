@@ -18,6 +18,7 @@ package auth
 
 import (
 	"fmt"
+	"strings"
 
 	jwt "github.com/dgrijalva/jwt-go"
 )
@@ -27,71 +28,76 @@ var (
 	optionalClaims = []string{"name", "email"}
 )
 
-type SharedSecret struct {
-	adminKey []byte
-	userKey  []byte
+type JwtAuthConfig struct {
+	SharedSecret []byte
+	RsaPublicPem []byte
+	ECDSPublicPem []byte
 }
 
-type SharedSecretConfig struct {
-	AdminKey []byte
-	UserKey  []byte
+type JwtAuthenticator struct {
+	config *JwtAuthConfig
+	rsaKey interface{}
+	ecdsKey interface{}
+	sharedSecretKey interface{}
 }
 
-func NewSharedSecret(config *SharedSecretConfig) *SharedSecret {
+func New(config *JwtAuthConfig) (*JwtAuthenticator, error) {
 
-	j := &SharedSecret{}
-	j.adminKey = config.AdminKey
-	j.userKey = config.UserKey
+	authenticator := &JwtAuthenticator{
+		config: *config,
+	}
 
-	return j
+	if len(config.Secret) != 0 {
+		authenticator.sharedSecretKey = config.SharedSecret
+	}
+	if len(config.RsaPublicPem) != 0 {
+		authenticator.rsaKey, err := jwt.ParseRSAPublicKeyFromPEM(config.RsaPublicPem)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to parse rsa public key: %v", err)
+		}
+	}
+	if len(config.ECDSPublicPem) !0 {
+		authenticator.ecdsKey, err := jwt.ParseECPublicKeyFromPEM(config.ECDSPublicPem)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to parse ecds public key: %v", err)
+		}
+	}
+
+	return authenticator, nil
 }
 
-func (j *SharedSecret) Type() string {
-	return "shared secret"
-}
-
-func (j *SharedSecret) AuthenticateToken(rawtoken string) (*Token, error) {
+func (j *JwtAuthenticator) AuthenticateToken(rawtoken string) (*Token, error) {
 
 	// Parse token
-	var claims jwt.MapClaims
-	tokenInfo := &Token{
-		Role: RoleUnknown,
-	}
 	token, err := jwt.Parse(rawtoken, func(token *jwt.Token) (interface{}, error) {
 
 		// Verify Method
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		var key interface{}
+		if strings.HasPrefix(token.Method.Alg(), "RS") {
+			// RS256, RS384, or RS512
+			return j.rsaKey, nil
+		} else if strings.HasPrefix(token.Method.Alg(), "ES") {
+			// ES256, ES384, or ES512
+			return j.ecdsKey, nil
+		} else if strings.HasPrefix(token.Method.Alg(), "HS") {
+			// HS256, HS384, or HS512
+			return j.sharedSecretKey, nil
+		} else {
+			return nil, fmt.Errorf( "Unknown token algorithm: %s", token.Method.Alg())
 		}
-
-		var ok bool
-		claims, ok = token.Claims.(jwt.MapClaims)
-		if claims == nil || !ok {
-			return nil, fmt.Errorf("No claims found in token")
-		}
-
-		// Get claims
-		if sub, ok := claims["sub"]; ok {
-			switch sub {
-			case string(RoleAdministrator):
-				tokenInfo.Role = RoleAdministrator
-				return j.adminKey, nil
-			case string(RoleUser):
-				tokenInfo.Role = RoleUser
-				return j.userKey, nil
-			default:
-				return nil, fmt.Errorf("Unknown role: %s", sub)
-			}
-		}
-
-		return nil, fmt.Errorf("Token missing iss claim")
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	if !token.Valid {
-		return nil, fmt.Errorf("Invalid token")
+		return nil, fmt.Errorf("Token failed validation")
+	}
+
+	// Get claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if claims == nil || !ok {
+		return nil, fmt.Errorf("No claims found in token")
 	}
 
 	// Check for required claims
@@ -102,6 +108,10 @@ func (j *SharedSecret) AuthenticateToken(rawtoken string) (*Token, error) {
 		}
 	}
 
+	// Create token information
+	tokenInfo := &Token{
+		Role: claims["sub"],
+	}
 	tokenInfo.Email, _ = claims["email"].(string)
 	tokenInfo.User, _ = claims["name"].(string)
 

@@ -16,22 +16,12 @@ limitations under the License.
 */
 package auth
 
-type RoleType string
-
-const (
-	RoleUnknown       RoleType = "unknown"
-	RoleUser          RoleType = "user"
-	RoleAdministrator RoleType = "admin"
-	RoleOperator      RoleType = "operator"
-)
-
 type Token struct {
 	User  string
 	Email string
-	Role  RoleType
+	Role  string
 }
 
 type Authenticator interface {
-	Type() string
 	AuthenticateToken(string) (*Token, error)
 }
