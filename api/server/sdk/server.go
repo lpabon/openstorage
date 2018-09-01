@@ -86,8 +86,10 @@ type Server struct {
 type sdkGrpcServer struct {
 	*grpcserver.GrpcServer
 
+	name          string
 	authenticator auth.Authenticator
 	config        ServerConfig
+	log           *logrus.Entry
 
 	clusterServer        *ClusterServer
 	nodeServer           *NodeServer
@@ -114,6 +116,7 @@ func New(config *ServerConfig) (*Server, error) {
 	udsConfig := *config
 	udsConfig.Net = "unix"
 	udsConfig.Address = DefaultUnixDomainSocket
+	udsConfig.Tls = nil
 	udsServer, err := newSdkGrpcServer(&udsConfig)
 	if err != nil {
 		return nil, err
@@ -154,6 +157,11 @@ func newSdkGrpcServer(config *ServerConfig) (*sdkGrpcServer, error) {
 		return nil, fmt.Errorf("OpenStorage Driver name must be provided")
 	}
 
+	name := "SDK-" + config.Net
+	log := logrus.WithFields(logrus.Fields{
+		"name": name,
+	})
+
 	// Save the driver for future calls
 	d, err := volumedrivers.Get(config.DriverName)
 	if err != nil {
@@ -163,20 +171,26 @@ func newSdkGrpcServer(config *ServerConfig) (*sdkGrpcServer, error) {
 	// Setup authentication
 	var authenticator auth.Authenticator
 	if config.Auth != nil {
-		authenticator, err := auth.New(config.Auth)
+		authenticator, err = auth.New(config.Auth)
 		if err != nil {
 			return nil, err
 		}
-		logrus.Info("SDK authentication enabled")
+		log.Info(name + " authentication enabled")
 	} else {
-		logrus.Info("SDK authentication disabled")
+		log.Info(name + " authentication disabled")
+	}
+
+	// Setup unix domain socket name
+	address := config.Address
+	if config.Net == "unix" {
+		address = fmt.Sprintf(config.Address, d.Name())
 	}
 
 	// Create gRPC server
 	gServer, err := grpcserver.New(&grpcserver.GrpcServerConfig{
 		Name:    fmt.Sprintf("SDK-%s", config.Net),
 		Net:     config.Net,
-		Address: config.Address,
+		Address: address,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Unable to setup server: %v", err)
@@ -185,6 +199,8 @@ func newSdkGrpcServer(config *ServerConfig) (*sdkGrpcServer, error) {
 	return &sdkGrpcServer{
 		GrpcServer:    gServer,
 		config:        *config,
+		name:          name,
+		log:           log,
 		authenticator: authenticator,
 		identityServer: &IdentityServer{
 			driver: d,
@@ -227,9 +243,9 @@ func (s *sdkGrpcServer) Start() error {
 			return fmt.Errorf("Failed to create credentials from cert files: %v", err)
 		}
 		opts = append(opts, grpc.Creds(creds))
-		logrus.Info("SDK TLS enabled")
+		s.log.Info("SDK TLS enabled")
 	} else {
-		logrus.Info("SDK TLS disabled")
+		s.log.Info("SDK TLS disabled")
 	}
 
 	// Setup authentication and authorization using interceptors if auth is enabled

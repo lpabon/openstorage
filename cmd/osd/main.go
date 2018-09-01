@@ -338,7 +338,7 @@ func wrapAction(f func(*cli.Context) error) func(*cli.Context) {
 	}
 }
 
-func setupAuth() auth.JwtAuthConfig {
+func setupAuth() *auth.JwtAuthConfig {
 	return &auth.JwtAuthConfig{
 		SharedSecret: []byte(os.Getenv("OPENSTORAGE_AUTH_SHAREDSECRET")),
 	}
