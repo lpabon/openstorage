@@ -16,14 +16,36 @@ limitations under the License.
 */
 package sdk
 
-type SdkRestGateway struct {}
+import (
+	"context"
+	"fmt"
+	"mime"
+	"net/http"
 
-func NewSdkRestGateway(server *Server)  *SdkRestGateway{
-	return nil
-	
+	"github.com/gobuffalo/packr"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+
+	"github.com/libopenstorage/openstorage/api"
+	"github.com/libopenstorage/openstorage/pkg/grpcserver"
+)
+
+type sdkRestGateway struct {
+	config     ServerConfig
+	restPort   string
+	grpcServer *sdkGrpcServer
 }
 
-func (*s SdkRestGateway) Start() error {
+func newSdkRestGateway(config *ServerConfig, grpcServer *sdkGrpcServer) (*sdkRestGateway, error) {
+	return &sdkRestGateway{
+		config:     *config,
+		restPort:   config.RestPort,
+		grpcServer: grpcServer,
+	}, nil
+}
+
+func (s *sdkRestGateway) Start() error {
 	mux, err := s.restServerSetupHandlers()
 	if err != nil {
 		return err
@@ -54,7 +76,7 @@ func (*s SdkRestGateway) Start() error {
 
 // restServerSetupHandlers sets up the handlers to the swagger ui and
 // to the gRPC REST Gateway.
-func (s *SdkRestGateway) restServerSetupHandlers() (*http.ServeMux, error) {
+func (s *sdkRestGateway) restServerSetupHandlers() (*http.ServeMux, error) {
 
 	// Create an HTTP server router
 	mux := http.NewServeMux()
@@ -93,57 +115,9 @@ func (s *SdkRestGateway) restServerSetupHandlers() (*http.ServeMux, error) {
 		*/
 	}
 
-	// Determine if TLS is needed for the REST Gateway to connect to the gRPC server
-	/*
-		var opts []grpc.DialOption
-		var creds credentials.TransportCredentials
-		if s.config.Tls != nil {
-			var err error
-			creds, err = credentials.NewClientTLSFromFile(s.config.Tls.CertFile, "")
-			if err != nil {
-				return nil, fmt.Errorf("Failed to setup credentials for REST gateway: %v", err)
-			}
-			opts = []grpc.DialOption{grpc.WithTransportCredentials(creds), grpc.WithBlock(), grpc.FailOnNonTempDialError(true)}
-			logrus.Info(">>> HERE")
-		} else {
-			opts = []grpc.DialOption{grpc.WithInsecure()}
-			logrus.Info(">>> insecure")
-		}
-	*/
-
-	creds, err := credentials.NewClientTLSFromFile(s.config.Tls.CertFile, "example.com")
-	if err != nil {
-		return nil, fmt.Errorf("Failed to setup credentials for REST gateway: %v", err)
-	}
-	dialer := func(address string, timeout time.Duration) (net.Conn, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
-
-		add := s.Address()
-		conn, err := net.Dial("tcp", add)
-		if err != nil {
-			logrus.Errorf("REST Gateway failed to dial gRPC server: %v", err)
-			return nil, err
-		}
-		conn, _, err = creds.ClientHandshake(ctx, s.Address(), conn)
-		if err != nil {
-			logrus.Errorf("REST Gateway failed to connect gRPC server: %v", err)
-			return nil, err
-		}
-
-		return conn, nil
-	}
-	opts := []grpc.DialOption{
-		grpc.WithInsecure(),
-		grpc.WithBlock(),
-		grpc.FailOnNonTempDialError(true),
-		grpc.WithDialer(dialer),
-	}
-
-	conn, err := grpc.Dial(s.Address(), opts...)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to setup REST Gateway connection to gRPC Server: %v", err)
-	}
+	conn, err := grpcserver.Connect(
+		s.grpcServer.Address(),
+		[]grpc.DialOption{grpc.WithInsecure()})
 
 	// Register the REST Gateway handlers
 	for _, handler := range handlers {
