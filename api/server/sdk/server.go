@@ -41,32 +41,9 @@ import (
 type AuthenticationType string
 
 const (
-	// AuthenticationTypeUnknown is a placeholder for unknown types
-	AuthenticationTypeUnknown AuthenticationType = "unknown"
-	// AuthenticationTypeSharedSecret is used when using JWT tokens signed with
-	// a shared secret
-	AuthenticationTypeSharedSecret AuthenticationType = "shared_secret"
 	// Default unix domain socket location
-	DefaultUnixDomainSocket = "/run/%s.sock"
+	DefaultUnixDomainSocket = "/tmp/%s.sock"
 )
-
-// AuthenticationSecretsConfig is used when using shared secrets
-type AuthenticationSecretsConfig struct {
-	// Administrator role key
-	AdminKey string
-	// User role key
-	UserKey string
-}
-
-// AuthenticationConfig provides authentication configuration for the SDK server
-type AuthenticationConfig struct {
-	// Determine if the authentication should be enabled
-	Enabled bool
-	// Type of Authentication
-	Type AuthenticationType
-	// Shared secret configuration
-	SharedSecret *AuthenticationSecretsConfig
-}
 
 type TLSConfig struct {
 	CertFile string
@@ -94,13 +71,19 @@ type ServerConfig struct {
 	// Cluster interface
 	Cluster cluster.Cluster
 	// Authentication configuration
-	Auth AuthenticationConfig
+	Auth *auth.JwtAuthConfig
 	// Secure Tls configuration
 	Tls *TLSConfig
 }
 
 // Server is an implementation of the gRPC SDK interface
 type Server struct {
+	netServer   *sdkGrpcServer
+	udsServer   *sdkGrpcServer
+	restGateway *sdkRestGateway
+}
+
+type sdkGrpcServer struct {
 	*grpcserver.GrpcServer
 
 	authenticator auth.Authenticator
@@ -117,10 +100,53 @@ type Server struct {
 }
 
 // Interface check
-var _ grpcserver.Server = &Server{}
+var _ grpcserver.Server = &sdkGrpcServer{}
+
+func New(config *ServerConfig) (*Server, error) {
+
+	// Create a gRPC server on the network
+	netServer, err := newSdkGrpcServer(config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a gRPC server on a unix domain socket
+	udsConfig := *config
+	udsConfig.Net = "unix"
+	udsConfig.Address = DefaultUnixDomainSocket
+	udsServer, err := newSdkGrpcServer(&udsConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create REST Gateway and connect it to the unix domain socket server
+	restGeteway, err := newSdkRestGateway(config, udsServer)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Server{
+		netServer:   netServer,
+		udsServer:   udsServer,
+		restGateway: restGeteway,
+	}, nil
+}
+
+// Start all servers
+func (s *Server) Start() error {
+	if err := s.netServer.Start(); err != nil {
+		return err
+	} else if err := s.udsServer.Start(); err != nil {
+		return err
+	} else if err := s.restGateway.Start(); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // New creates a new SDK gRPC server
-func New(config *ServerConfig) (*Server, error) {
+func newSdkGrpcServer(config *ServerConfig) (*sdkGrpcServer, error) {
 	if nil == config {
 		return nil, fmt.Errorf("Configuration must be provided")
 	}
@@ -136,21 +162,19 @@ func New(config *ServerConfig) (*Server, error) {
 
 	// Setup authentication
 	var authenticator auth.Authenticator
-	if config.Auth.Enabled {
-		if config.Auth.SharedSecret != nil {
-			logrus.Info("SDK authentication enabled using shared secrets")
-			authenticator = auth.NewSharedSecret(&auth.SharedSecretConfig{
-				AdminKey: []byte(config.Auth.SharedSecret.AdminKey),
-				UserKey:  []byte(config.Auth.SharedSecret.UserKey),
-			})
-		} else {
-			return nil, fmt.Errorf("Authentication enabled without authentication configuartion provided")
+	if config.Auth != nil {
+		authenticator, err := auth.New(config.Auth)
+		if err != nil {
+			return nil, err
 		}
+		logrus.Info("SDK authentication enabled")
+	} else {
+		logrus.Info("SDK authentication disabled")
 	}
 
 	// Create gRPC server
 	gServer, err := grpcserver.New(&grpcserver.GrpcServerConfig{
-		Name:    "SDK",
+		Name:    fmt.Sprintf("SDK-%s", config.Net),
 		Net:     config.Net,
 		Address: config.Address,
 	})
@@ -158,11 +182,10 @@ func New(config *ServerConfig) (*Server, error) {
 		return nil, fmt.Errorf("Unable to setup server: %v", err)
 	}
 
-	return &Server{
+	return &sdkGrpcServer{
 		GrpcServer:    gServer,
 		config:        *config,
 		authenticator: authenticator,
-		restPort:      config.RestPort,
 		identityServer: &IdentityServer{
 			driver: d,
 		},
@@ -194,7 +217,7 @@ func New(config *ServerConfig) (*Server, error) {
 
 // Start is used to start the server.
 // It will return an error if the server is already running.
-func (s *Server) Start() error {
+func (s *sdkGrpcServer) Start() error {
 
 	// Setup https if certs have been provided
 	opts := make([]grpc.ServerOption, 0)
@@ -210,7 +233,7 @@ func (s *Server) Start() error {
 	}
 
 	// Setup authentication and authorization using interceptors if auth is enabled
-	if s.config.Auth.Enabled {
+	if s.config.Auth != nil {
 		opts = append(opts, grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				grpc_auth.UnaryServerInterceptor(s.auth),

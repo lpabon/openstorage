@@ -29,7 +29,7 @@ import (
 )
 
 // Funtion defined grpc_auth.AuthFunc()
-func (s *Server) auth(ctx context.Context) (context.Context, error) {
+func (s *sdkGrpcServer) auth(ctx context.Context) (context.Context, error) {
 	token, err := grpc_auth.AuthFromMD(ctx, "bearer")
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func (s *Server) auth(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func (s *Server) loggerServerInterceptor(
+func (s *sdkGrpcServer) loggerServerInterceptor(
 	ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
@@ -66,7 +66,7 @@ func (s *Server) loggerServerInterceptor(
 	return handler(ctx, req)
 }
 
-func (s *Server) authorizationServerInterceptor(
+func (s *sdkGrpcServer) authorizationServerInterceptor(
 	ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
@@ -78,7 +78,7 @@ func (s *Server) authorizationServerInterceptor(
 	}
 
 	// Check user role
-	if auth.RoleUser == tokenInfo.Role {
+	if auth.RoleUser == "admin" {
 		// User is not allowed the following services and/or methods
 		// Example service:
 		//    openstorage.api.OpenStorageNode

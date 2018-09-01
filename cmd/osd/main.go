@@ -45,6 +45,7 @@ import (
 	"github.com/libopenstorage/openstorage/csi"
 	"github.com/libopenstorage/openstorage/graph/drivers"
 	"github.com/libopenstorage/openstorage/objectstore"
+	"github.com/libopenstorage/openstorage/pkg/auth"
 	"github.com/libopenstorage/openstorage/schedpolicy"
 	"github.com/libopenstorage/openstorage/volume"
 	"github.com/libopenstorage/openstorage/volume/drivers"
@@ -273,7 +274,7 @@ func start(c *cli.Context) error {
 			RestPort:   c.String("sdkrestport"),
 			DriverName: d,
 			Cluster:    cm,
-			Auth:       setupAuth(cfg),
+			Auth:       setupAuth(),
 			Tls:        setupSdkTls(),
 		})
 		if err != nil {
@@ -337,34 +338,10 @@ func wrapAction(f func(*cli.Context) error) func(*cli.Context) {
 	}
 }
 
-func setupAuth(cfg *config.Config) sdk.AuthenticationConfig {
-	// Currently only shared secret is supported
-	// so we will assume that here if authentication is set
-	authCfg := sdk.AuthenticationConfig{}
-	envEnableAuth := os.Getenv("OPENSTORAGE_AUTH_ENABLE")
-	if cfg.Osd.ClusterConfig.Authentication ||
-		envEnableAuth == "yes" ||
-		envEnableAuth == "true" ||
-		envEnableAuth == "y" ||
-		envEnableAuth == "1" {
-		authCfg.Enabled = true
-		authCfg.Type = sdk.AuthenticationTypeSharedSecret
-		authCfg.SharedSecret = &sdk.AuthenticationSecretsConfig{}
-
-		if key := os.Getenv("OPENSTORAGE_AUTH_ADMINKEY"); len(key) != 0 {
-			authCfg.SharedSecret.AdminKey = key
-		} else {
-			authCfg.SharedSecret.AdminKey = cfg.Osd.ClusterConfig.AdminKey
-		}
-
-		if key := os.Getenv("OPENSTORAGE_AUTH_USERKEY"); len(key) != 0 {
-			authCfg.SharedSecret.UserKey = key
-		} else {
-			authCfg.SharedSecret.UserKey = cfg.Osd.ClusterConfig.UserKey
-		}
+func setupAuth() auth.JwtAuthConfig {
+	return &auth.JwtAuthConfig{
+		SharedSecret: []byte(os.Getenv("OPENSTORAGE_AUTH_SHAREDSECRET")),
 	}
-
-	return authCfg
 }
 
 func setupSdkTls() *sdk.TLSConfig {

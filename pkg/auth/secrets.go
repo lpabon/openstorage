@@ -29,35 +29,43 @@ var (
 )
 
 type JwtAuthConfig struct {
-	SharedSecret []byte
-	RsaPublicPem []byte
+	SharedSecret  []byte
+	RsaPublicPem  []byte
 	ECDSPublicPem []byte
 }
 
 type JwtAuthenticator struct {
-	config *JwtAuthConfig
-	rsaKey interface{}
-	ecdsKey interface{}
+	config          JwtAuthConfig
+	rsaKey          interface{}
+	ecdsKey         interface{}
 	sharedSecretKey interface{}
 }
 
 func New(config *JwtAuthConfig) (*JwtAuthenticator, error) {
 
+	// Check at least one is set
+	if len(config.SharedSecret) == 0 &&
+		len(config.RsaPublicPem) == 0 &&
+		len(config.ECDSPublicPem) == 0 {
+		return nil, fmt.Errorf("Server was passed empty authentication information with no shared secret or pem files set")
+	}
+
 	authenticator := &JwtAuthenticator{
 		config: *config,
 	}
 
-	if len(config.Secret) != 0 {
+	var err error
+	if len(config.SharedSecret) != 0 {
 		authenticator.sharedSecretKey = config.SharedSecret
 	}
 	if len(config.RsaPublicPem) != 0 {
-		authenticator.rsaKey, err := jwt.ParseRSAPublicKeyFromPEM(config.RsaPublicPem)
+		authenticator.rsaKey, err = jwt.ParseRSAPublicKeyFromPEM(config.RsaPublicPem)
 		if err != nil {
 			return nil, fmt.Errorf("Unable to parse rsa public key: %v", err)
 		}
 	}
-	if len(config.ECDSPublicPem) !0 {
-		authenticator.ecdsKey, err := jwt.ParseECPublicKeyFromPEM(config.ECDSPublicPem)
+	if len(config.ECDSPublicPem) != 0 {
+		authenticator.ecdsKey, err = jwt.ParseECPublicKeyFromPEM(config.ECDSPublicPem)
 		if err != nil {
 			return nil, fmt.Errorf("Unable to parse ecds public key: %v", err)
 		}
@@ -72,7 +80,6 @@ func (j *JwtAuthenticator) AuthenticateToken(rawtoken string) (*Token, error) {
 	token, err := jwt.Parse(rawtoken, func(token *jwt.Token) (interface{}, error) {
 
 		// Verify Method
-		var key interface{}
 		if strings.HasPrefix(token.Method.Alg(), "RS") {
 			// RS256, RS384, or RS512
 			return j.rsaKey, nil
@@ -83,7 +90,7 @@ func (j *JwtAuthenticator) AuthenticateToken(rawtoken string) (*Token, error) {
 			// HS256, HS384, or HS512
 			return j.sharedSecretKey, nil
 		} else {
-			return nil, fmt.Errorf( "Unknown token algorithm: %s", token.Method.Alg())
+			return nil, fmt.Errorf("Unknown token algorithm: %s", token.Method.Alg())
 		}
 	})
 	if err != nil {
@@ -109,8 +116,12 @@ func (j *JwtAuthenticator) AuthenticateToken(rawtoken string) (*Token, error) {
 	}
 
 	// Create token information
-	tokenInfo := &Token{
-		Role: claims["sub"],
+	tokenInfo := &Token{}
+	tokenInfo.Role, ok = claims["sub"].(string)
+	if !ok {
+		return nil, fmt.Errorf("Failed to retreive claims[sub] from token")
+	} else if len(tokenInfo.Role) == 0 {
+		return nil, fmt.Errorf("claims[sub] in the token is empty and must have the role")
 	}
 	tokenInfo.Email, _ = claims["email"].(string)
 	tokenInfo.User, _ = claims["name"].(string)
