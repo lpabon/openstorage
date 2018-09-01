@@ -78,7 +78,7 @@ func (s *sdkGrpcServer) authorizationServerInterceptor(
 	}
 
 	// Check user role
-	if auth.RoleUser == "admin" {
+	if "user" == tokenInfo.Role {
 		// User is not allowed the following services and/or methods
 		// Example service:
 		//    openstorage.api.OpenStorageNode
