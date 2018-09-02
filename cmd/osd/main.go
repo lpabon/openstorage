@@ -25,6 +25,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"runtime"
@@ -339,9 +340,29 @@ func wrapAction(f func(*cli.Context) error) func(*cli.Context) {
 }
 
 func setupAuth() *auth.JwtAuthConfig {
-	return &auth.JwtAuthConfig{
+	var err error
+
+	authConfig := &auth.JwtAuthConfig{
 		SharedSecret: []byte(os.Getenv("OPENSTORAGE_AUTH_SHAREDSECRET")),
 	}
+
+	// Read RSA file
+	if rsaFile := os.Getenv("OPENSTORAGE_AUTH_RSA_PUBKEY"); len(rsaFile) != 0 {
+		authConfig.RsaPublicPem, err = ioutil.ReadFile(rsaFile)
+		if err != nil {
+			logrus.Errorf("Failed to read %s", rsaFile)
+		}
+	}
+
+	// Read Ecds file
+	if ecdsFile := os.Getenv("OPENSTORAGE_AUTH_ECDS_PUBKEY"); len(ecdsFile) != 0 {
+		authConfig.ECDSPublicPem, err = ioutil.ReadFile(ecdsFile)
+		if err != nil {
+			logrus.Errorf("Failed to read %s", ecdsFile)
+		}
+	}
+
+	return authConfig
 }
 
 func setupSdkTls() *sdk.TLSConfig {
