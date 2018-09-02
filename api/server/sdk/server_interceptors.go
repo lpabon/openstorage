@@ -28,6 +28,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type InterceptorContextkey string
+
+const (
+	InterceptorContextTokenKey InterceptorContextkey = "token"
+)
+
 // Funtion defined grpc_auth.AuthFunc()
 func (s *sdkGrpcServer) auth(ctx context.Context) (context.Context, error) {
 	token, err := grpc_auth.AuthFromMD(ctx, "bearer")
@@ -39,7 +45,7 @@ func (s *sdkGrpcServer) auth(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, err.Error())
 	}
-	ctx = context.WithValue(ctx, "tokeninfo", tokenInfo)
+	ctx = context.WithValue(ctx, InterceptorContextTokenKey, tokenInfo)
 
 	return ctx, nil
 }
@@ -50,7 +56,7 @@ func (s *sdkGrpcServer) loggerServerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	if tokenInfo, ok := ctx.Value("tokeninfo").(*auth.Token); ok {
+	if tokenInfo, ok := ctx.Value(InterceptorContextTokenKey).(*auth.Token); ok {
 		logrus.WithFields(logrus.Fields{
 			"user":   tokenInfo.User,
 			"email":  tokenInfo.Email,
@@ -72,7 +78,7 @@ func (s *sdkGrpcServer) authorizationServerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	tokenInfo, ok := ctx.Value("tokeninfo").(*auth.Token)
+	tokenInfo, ok := ctx.Value(InterceptorContextTokenKey).(*auth.Token)
 	if !ok {
 		return nil, status.Errorf(codes.Internal, "Authorization called without token")
 	}
@@ -95,7 +101,7 @@ func (s *sdkGrpcServer) authorizationServerInterceptor(
 			if strings.Contains(info.FullMethod, notallowed) {
 				return nil, status.Errorf(
 					codes.PermissionDenied,
-					"Not role %s is not authorized to use %s",
+					"Role %s is not authorized to use %s",
 					tokenInfo.Role,
 					info.FullMethod,
 				)
