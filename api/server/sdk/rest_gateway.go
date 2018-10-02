@@ -101,23 +101,27 @@ func (s *sdkRestGateway) restServerSetupHandlers() (*http.ServeMux, error) {
 	// Create a router just for HTTP REST gRPC Server Gateway
 	gmux := runtime.NewServeMux()
 
-	// REST Gateway Handlers
-	handlers := []func(context.Context, *runtime.ServeMux, *grpc.ClientConn) (err error){
-		api.RegisterOpenStorageClusterHandler,
-		/*
-			api.RegisterOpenStorageNodeHandlerFromEndpoint,
-			api.RegisterOpenStorageVolumeHandlerFromEndpoint,
-			api.RegisterOpenStorageObjectstoreHandlerFromEndpoint,
-			api.RegisterOpenStorageCredentialsHandlerFromEndpoint,
-			api.RegisterOpenStorageSchedulePolicyHandlerFromEndpoint,
-			api.RegisterOpenStorageCloudBackupHandlerFromEndpoint,
-			api.RegisterOpenStorageIdentityHandlerFromEndpoint,
-		*/
-	}
-
+	// Connect to gRPC unix domain socket
 	conn, err := grpcserver.Connect(
 		s.grpcServer.Address(),
 		[]grpc.DialOption{grpc.WithInsecure()})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to gRPC handler: %v", err)
+	}
+
+	// REST Gateway Handlers
+	handlers := []func(context.Context, *runtime.ServeMux, *grpc.ClientConn) (err error){
+		api.RegisterOpenStorageClusterHandler,
+		api.RegisterOpenStorageNodeHandler,
+		api.RegisterOpenStorageVolumeHandler,
+		api.RegisterOpenStorageObjectstoreHandler,
+		api.RegisterOpenStorageCredentialsHandler,
+		api.RegisterOpenStorageSchedulePolicyHandler,
+		api.RegisterOpenStorageCloudBackupHandler,
+		api.RegisterOpenStorageIdentityHandler,
+		api.RegisterOpenStorageMountAttachHandler,
+		api.RegisterOpenStorageAlertsHandler,
+	}
 
 	// Register the REST Gateway handlers
 	for _, handler := range handlers {
@@ -127,12 +131,14 @@ func (s *sdkRestGateway) restServerSetupHandlers() (*http.ServeMux, error) {
 		}
 	}
 
-	clustergrpc := api.NewOpenStorageClusterClient(conn)
-	ci, err := clustergrpc.InspectCurrent(context.Background(), &api.SdkClusterInspectCurrentRequest{})
-	fmt.Printf("%v e:%v", ci, err)
-
 	// Pass all other unhandled paths to the gRPC gateway
 	mux.Handle("/", gmux)
+
+	// DELETE THIS, THIS IS A TEST
+	clustergrpc := api.NewOpenStorageClusterClient(conn)
+	ci, err := clustergrpc.InspectCurrent(context.Background(), &api.SdkClusterInspectCurrentRequest{})
+	fmt.Printf("%v e:%v\n", ci, err)
+	// END DELETE
 
 	return mux, nil
 }

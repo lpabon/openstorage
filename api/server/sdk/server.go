@@ -22,14 +22,10 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/libopenstorage/openstorage/alerts"
 
-	"github.com/gobuffalo/packr"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
-
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/api/spec"
@@ -78,7 +74,7 @@ type ServerConfig struct {
 	AlertsFilterDeleter alerts.FilterDeleter
 	// Authentication configuration
 	Auth *auth.JwtAuthConfig
-	// Secure Tls configuration
+	// Tls configuration
 	Tls *TLSConfig
 }
 
@@ -164,6 +160,7 @@ func newSdkGrpcServer(config *ServerConfig) (*sdkGrpcServer, error) {
 		return nil, fmt.Errorf("OpenStorage Driver name must be provided")
 	}
 
+	// Create a log object for this server
 	name := "SDK-" + config.Net
 	log := logrus.WithFields(logrus.Fields{
 		"name": name,
@@ -195,7 +192,7 @@ func newSdkGrpcServer(config *ServerConfig) (*sdkGrpcServer, error) {
 
 	// Create gRPC server
 	gServer, err := grpcserver.New(&grpcserver.GrpcServerConfig{
-		Name:    fmt.Sprintf("SDK-%s", config.Net),
+		Name:    name,
 		Net:     config.Net,
 		Address: address,
 	})
@@ -295,213 +292,3 @@ func (s *sdkGrpcServer) Start() error {
 	}
 	return nil
 }
-
-/*
-// restServerSetupHandlers sets up the handlers to the swagger ui and
-// to the gRPC REST Gateway.
-func (s *Server) restServerSetupHandlers() (*http.ServeMux, error) {
-
-	// Create an HTTP server router
-	mux := http.NewServeMux()
-
-	// Swagger files using packr
-	swaggerUIBox := packr.NewBox("./swagger-ui")
-	swaggerJSONBox := packr.NewBox("./api")
-	mime.AddExtensionType(".svg", "image/svg+xml")
-
-	// Handler to return swagger.json
-	mux.HandleFunc("/swagger.json", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(swaggerJSONBox.Bytes("api.swagger.json"))
-	})
-
-	// Handler to access the swagger ui. The UI pulls the swagger
-	// json file from /swagger.json
-	// The link below MUST have th last '/'. It is really important.
-	prefix := "/swagger-ui/"
-	mux.Handle(prefix,
-		http.StripPrefix(prefix, http.FileServer(swaggerUIBox)))
-
-	// Create a router just for HTTP REST gRPC Server Gateway
-	gmux := runtime.NewServeMux()
-
-	// REST Gateway Handlers
-	handlers := []func(context.Context, *runtime.ServeMux, *grpc.ClientConn) (err error){
-		api.RegisterOpenStorageClusterHandler,
-		/*
-			api.RegisterOpenStorageNodeHandlerFromEndpoint,
-			api.RegisterOpenStorageVolumeHandlerFromEndpoint,
-			api.RegisterOpenStorageObjectstoreHandlerFromEndpoint,
-			api.RegisterOpenStorageCredentialsHandlerFromEndpoint,
-			api.RegisterOpenStorageSchedulePolicyHandlerFromEndpoint,
-			api.RegisterOpenStorageCloudBackupHandlerFromEndpoint,
-			api.RegisterOpenStorageIdentityHandlerFromEndpoint,
-		////
-	}
-
-	// Determine if TLS is needed for the REST Gateway to connect to the gRPC server
-	/*
-		var opts []grpc.DialOption
-		var creds credentials.TransportCredentials
-		if s.config.Tls != nil {
-			var err error
-			creds, err = credentials.NewClientTLSFromFile(s.config.Tls.CertFile, "")
-			if err != nil {
-				return nil, fmt.Errorf("Failed to setup credentials for REST gateway: %v", err)
-			}
-			opts = []grpc.DialOption{grpc.WithTransportCredentials(creds), grpc.WithBlock(), grpc.FailOnNonTempDialError(true)}
-			logrus.Info(">>> HERE")
-		} else {
-			opts = []grpc.DialOption{grpc.WithInsecure()}
-			logrus.Info(">>> insecure")
-		}
-	/////
-
-	creds, err := credentials.NewClientTLSFromFile(s.config.Tls.CertFile, "example.com")
-	if err != nil {
-		return nil, fmt.Errorf("Failed to setup credentials for REST gateway: %v", err)
-	}
-	dialer := func(address string, timeout time.Duration) (net.Conn, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
-
-		add := s.Address()
-		conn, err := net.Dial("tcp", add)
-		if err != nil {
-			logrus.Errorf("REST Gateway failed to dial gRPC server: %v", err)
-			return nil, err
-		}
-		conn, _, err = creds.ClientHandshake(ctx, s.Address(), conn)
-		if err != nil {
-			logrus.Errorf("REST Gateway failed to connect gRPC server: %v", err)
-			return nil, err
-		}
-
-		return conn, nil
-	}
-	opts := []grpc.DialOption{
-		grpc.WithInsecure(),
-		grpc.WithBlock(),
-		grpc.FailOnNonTempDialError(true),
-		grpc.WithDialer(dialer),
-	}
-
-	conn, err := grpc.Dial(s.Address(), opts...)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to setup REST Gateway connection to gRPC Server: %v", err)
-	}
-
-	// Register the REST Gateway handlers
-	for _, handler := range handlers {
-		err := handler(context.Background(), gmux, conn)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	/*
-		err = api.RegisterOpenStorageMountAttachHandlerFromEndpoint(
-			context.Background(),
-			gmux,
-			s.Address(),
-			[]grpc.DialOption{grpc.WithInsecure()})
-		if err != nil {
-			return nil, err
-		}
-
-		err = api.RegisterOpenStorageAlertsHandlerFromEndpoint(
-			context.Background(),
-			gmux,
-			s.Address(),
-			[]grpc.DialOption{grpc.WithInsecure()})
-		if err != nil {
-			return nil, err
-		}
-	//////
-	clustergrpc := api.NewOpenStorageClusterClient(conn)
-	ci, err := clustergrpc.InspectCurrent(context.Background(), &api.SdkClusterInspectCurrentRequest{})
-	fmt.Printf("%v e:%v", ci, err)
-
-	// Pass all other unhandled paths to the gRPC gateway
-	mux.Handle("/", gmux)
-
-	return mux, nil
-}
-
-// Funtion defined grpc_auth.AuthFunc()
-func (s *Server) auth(ctx context.Context) (context.Context, error) {
-	token, err := grpc_auth.AuthFromMD(ctx, "bearer")
-	if err != nil {
-		return nil, err
-	}
-
-	tokenInfo, err := s.authenticator.AuthenticateToken(token)
-	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, err.Error())
-	}
-	ctx = context.WithValue(ctx, "tokeninfo", tokenInfo)
-
-	return ctx, nil
-}
-
-func (s *Server) loggerServerInterceptor(
-	ctx context.Context,
-	req interface{},
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (interface{}, error) {
-	if tokenInfo, ok := ctx.Value("tokeninfo").(*auth.Token); ok {
-		logrus.WithFields(logrus.Fields{
-			"user":   tokenInfo.User,
-			"email":  tokenInfo.Email,
-			"role":   tokenInfo.Role,
-			"method": info.FullMethod,
-		}).Info("called")
-	} else {
-		logrus.WithFields(logrus.Fields{
-			"method": info.FullMethod,
-		}).Info("called")
-	}
-
-	return handler(ctx, req)
-}
-
-func (s *Server) authorizationServerInterceptor(
-	ctx context.Context,
-	req interface{},
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (interface{}, error) {
-	tokenInfo, ok := ctx.Value("tokeninfo").(*auth.Token)
-	if !ok {
-		return nil, status.Errorf(codes.Internal, "Authorization called without token")
-	}
-
-	// Check user role
-	if auth.RoleUser == tokenInfo.Role {
-		// User is not allowed the following services and/or methods
-		// Example service:
-		//    openstorage.api.OpenStorageNode
-		// Example method:
-		//    openstorage.api.OpenStorageCluster/InspectCurrent
-		//
-		// TODO: Make this configurable
-		blacklist := []string{
-			"openstorage.api.OpenStorageCluster",
-			"openstorage.api.OpenStorageNode",
-		}
-
-		for _, notallowed := range blacklist {
-			if strings.Contains(info.FullMethod, notallowed) {
-				return nil, status.Errorf(
-					codes.PermissionDenied,
-					"Not role %s is not authorized to use %s",
-					tokenInfo.Role,
-					info.FullMethod,
-				)
-			}
-		}
-	}
-
-	return handler(ctx, req)
-}
-*/

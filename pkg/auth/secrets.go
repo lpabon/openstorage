@@ -24,8 +24,7 @@ import (
 )
 
 var (
-	requiredClaims = []string{"sub", "iat", "exp"}
-	optionalClaims = []string{"name", "email"}
+	requiredClaims = []string{"iat", "exp", "name", "email"}
 )
 
 type JwtAuthConfig struct {
@@ -117,12 +116,7 @@ func (j *JwtAuthenticator) AuthenticateToken(rawtoken string) (*Token, error) {
 
 	// Create token information
 	tokenInfo := &Token{}
-	tokenInfo.Role, ok = claims["sub"].(string)
-	if !ok {
-		return nil, fmt.Errorf("Failed to retreive claims[sub] from token")
-	} else if len(tokenInfo.Role) == 0 {
-		return nil, fmt.Errorf("claims[sub] in the token is empty and must have the role")
-	}
+	tokenInfo.Role, _ = claims["role"].(string)
 	tokenInfo.Email, _ = claims["email"].(string)
 	tokenInfo.User, _ = claims["name"].(string)
 
