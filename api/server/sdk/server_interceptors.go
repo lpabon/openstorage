@@ -19,8 +19,12 @@ package sdk
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
 
 	sdk_auth "github.com/libopenstorage/openstorage-sdk-auth/pkg/auth"
+	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
@@ -33,6 +37,16 @@ type InterceptorContextkey string
 
 const (
 	InterceptorContextTokenKey InterceptorContextkey = "tokenclaims"
+)
+
+var (
+	defaultRoles = map[string][]sdk_auth.Rule{
+		"admin": {
+			{
+				Allow: []string{"all"},
+			},
+		},
+	}
 )
 
 // Authenticate user and add authorization information back in the context
@@ -61,23 +75,23 @@ func (s *sdkGrpcServer) loggerServerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	if claims, ok := ctx.Value(InterceptorContextTokenKey).(*sdk_auth.Claims); ok {
-		// Change claims to JSON string to print into log
-		claimsJSON, _ := json.Marshal(claims)
-		logrus.WithFields(logrus.Fields{
-			"name":   claims.Name,
-			"email":  claims.Email,
-			"role":   claims.Role,
-			"claims": string(claimsJSON),
-			"method": info.FullMethod,
-		}).Info("audit")
+	reqid := uuid.New()
+	logger := logrus.WithFields(logrus.Fields{
+		"method": info.FullMethod,
+		"reqid":  reqid,
+	})
+
+	logger.Info("Start")
+	ts := time.Now()
+	i, err := handler(ctx, req)
+	duration := time.Now().Sub(ts)
+	if err != nil {
+		logger.WithFields(logrus.Fields{"duration": duration}).Infof("Failed: %v", err)
 	} else {
-		logrus.WithFields(logrus.Fields{
-			"method": info.FullMethod,
-		}).Info("audit without authentication")
+		logger.WithFields(logrus.Fields{"duration": duration}).Info("Successful")
 	}
 
-	return handler(ctx, req)
+	return i, err
 }
 
 func (s *sdkGrpcServer) authorizationServerInterceptor(
@@ -86,38 +100,72 @@ func (s *sdkGrpcServer) authorizationServerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	/*
-		tokenInfo, ok := ctx.Value(InterceptorContextTokenKey).(*auth.Token)
+	claims, ok := ctx.Value(InterceptorContextTokenKey).(*sdk_auth.Claims)
+	if !ok {
+		return nil, status.Errorf(codes.Internal, "Authorization called without token")
+	}
+
+	// Setup auditor log
+	claimsJSON, _ := json.Marshal(claims)
+	logger := logrus.WithFields(logrus.Fields{
+		"name":   claims.Name,
+		"email":  claims.Email,
+		"role":   claims.Role,
+		"claims": string(claimsJSON),
+		"method": info.FullMethod,
+	})
+
+	// Determine rules
+	var rules []sdk_auth.Rule
+	if len(claims.Rules) != 0 {
+		rules = claims.Rules
+	} else {
+		if len(claims.Role) == 0 {
+			return nil, status.Error(codes.PermissionDenied, "Access denied, no roles or rules set")
+		}
+		rules, ok = defaultRoles[claims.Role]
 		if !ok {
-			return nil, status.Errorf(codes.Internal, "Authorization called without token")
+			return nil, status.Errorf(
+				codes.PermissionDenied,
+				"Access denied, unknown role: %s", claims.Role)
 		}
+	}
 
-		// Check user role
-		if "user" == tokenInfo.Role {
-			// User is not allowed the following services and/or methods
-			// Example service:
-			//    openstorage.api.OpenStorageNode
-			// Example method:
-			//    openstorage.api.OpenStorageCluster/InspectCurrent
-			//
-			// TODO: Make this configurable
-			blacklist := []string{
-				"openstorage.api.OpenStorageCluster",
-				"openstorage.api.OpenStorageNode",
-			}
+	// Authorize
+	if err := authorizeClaims(rules, info.FullMethod); err != nil {
+		logger.Infof("Access denied")
+		return nil, status.Errorf(
+			codes.PermissionDenied,
+			"Access to %s denied",
+			info.FullMethod)
+	}
 
-			for _, notallowed := range blacklist {
-				if strings.Contains(info.FullMethod, notallowed) {
-					return nil, status.Errorf(
-						codes.PermissionDenied,
-						"Role %s is not authorized to use %s",
-						tokenInfo.Role,
-						info.FullMethod,
-					)
-				}
-			}
-		}
-	*/
-
+	logger.Info("Authorized")
 	return handler(ctx, req)
+}
+
+func authorizeClaims(rules []sdk_auth.Rule, fullmethod string) error {
+
+	// String: "/<service>/<method>"
+	parts := strings.Split(fullmethod, "/")
+	service := parts[1]
+
+	// Go through each rule until a match is found
+	for _, rule := range rules {
+		for _, deny := range rule.Deny {
+			if deny == "all" ||
+				fullmethod == deny ||
+				service == deny {
+				return fmt.Errorf("access denied")
+			}
+		}
+		for _, allowed := range rule.Allow {
+			if allowed == "all" ||
+				fullmethod == allowed ||
+				service == allowed {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("no accessable rule to authorize access found")
 }
