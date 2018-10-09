@@ -18,11 +18,8 @@ package sdk
 
 import (
 	"context"
-	"strings"
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
-	"github.com/libopenstorage/openstorage/pkg/auth"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,7 +28,7 @@ import (
 type InterceptorContextkey string
 
 const (
-	InterceptorContextTokenKey InterceptorContextkey = "token"
+	InterceptorContextTokenKey InterceptorContextkey = "tokenclaims"
 )
 
 // Funtion defined grpc_auth.AuthFunc()
@@ -41,11 +38,11 @@ func (s *sdkGrpcServer) auth(ctx context.Context) (context.Context, error) {
 		return nil, err
 	}
 
-	tokenInfo, err := s.authenticator.AuthenticateToken(token)
+	claims, err := s.authenticator.AuthenticateToken(token)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, err.Error())
 	}
-	ctx = context.WithValue(ctx, InterceptorContextTokenKey, tokenInfo)
+	ctx = context.WithValue(ctx, InterceptorContextTokenKey, claims)
 
 	return ctx, nil
 }
@@ -56,18 +53,20 @@ func (s *sdkGrpcServer) loggerServerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	if tokenInfo, ok := ctx.Value(InterceptorContextTokenKey).(*auth.Token); ok {
-		logrus.WithFields(logrus.Fields{
-			"user":   tokenInfo.User,
-			"email":  tokenInfo.Email,
-			"role":   tokenInfo.Role,
-			"method": info.FullMethod,
-		}).Info("called")
-	} else {
-		logrus.WithFields(logrus.Fields{
-			"method": info.FullMethod,
-		}).Info("called")
-	}
+	/*
+		if tokenInfo, ok := ctx.Value(InterceptorContextTokenKey).(*auth.Token); ok {
+			logrus.WithFields(logrus.Fields{
+				"user":   tokenInfo.User,
+				"email":  tokenInfo.Email,
+				"role":   tokenInfo.Role,
+				"method": info.FullMethod,
+			}).Info("called")
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"method": info.FullMethod,
+			}).Info("called")
+		}
+	*/
 
 	return handler(ctx, req)
 }
@@ -78,36 +77,38 @@ func (s *sdkGrpcServer) authorizationServerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	tokenInfo, ok := ctx.Value(InterceptorContextTokenKey).(*auth.Token)
-	if !ok {
-		return nil, status.Errorf(codes.Internal, "Authorization called without token")
-	}
-
-	// Check user role
-	if "user" == tokenInfo.Role {
-		// User is not allowed the following services and/or methods
-		// Example service:
-		//    openstorage.api.OpenStorageNode
-		// Example method:
-		//    openstorage.api.OpenStorageCluster/InspectCurrent
-		//
-		// TODO: Make this configurable
-		blacklist := []string{
-			"openstorage.api.OpenStorageCluster",
-			"openstorage.api.OpenStorageNode",
+	/*
+		tokenInfo, ok := ctx.Value(InterceptorContextTokenKey).(*auth.Token)
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "Authorization called without token")
 		}
 
-		for _, notallowed := range blacklist {
-			if strings.Contains(info.FullMethod, notallowed) {
-				return nil, status.Errorf(
-					codes.PermissionDenied,
-					"Role %s is not authorized to use %s",
-					tokenInfo.Role,
-					info.FullMethod,
-				)
+		// Check user role
+		if "user" == tokenInfo.Role {
+			// User is not allowed the following services and/or methods
+			// Example service:
+			//    openstorage.api.OpenStorageNode
+			// Example method:
+			//    openstorage.api.OpenStorageCluster/InspectCurrent
+			//
+			// TODO: Make this configurable
+			blacklist := []string{
+				"openstorage.api.OpenStorageCluster",
+				"openstorage.api.OpenStorageNode",
+			}
+
+			for _, notallowed := range blacklist {
+				if strings.Contains(info.FullMethod, notallowed) {
+					return nil, status.Errorf(
+						codes.PermissionDenied,
+						"Role %s is not authorized to use %s",
+						tokenInfo.Role,
+						info.FullMethod,
+					)
+				}
 			}
 		}
-	}
+	*/
 
 	return handler(ctx, req)
 }
