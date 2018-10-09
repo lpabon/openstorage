@@ -18,6 +18,10 @@ package sdk
 
 import (
 	"context"
+	"encoding/json"
+
+	sdk_auth "github.com/libopenstorage/openstorage-sdk-auth/pkg/auth"
+	"github.com/sirupsen/logrus"
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"google.golang.org/grpc"
@@ -31,17 +35,21 @@ const (
 	InterceptorContextTokenKey InterceptorContextkey = "tokenclaims"
 )
 
-// Funtion defined grpc_auth.AuthFunc()
+// Authenticate user and add authorization information back in the context
 func (s *sdkGrpcServer) auth(ctx context.Context) (context.Context, error) {
 	token, err := grpc_auth.AuthFromMD(ctx, "bearer")
 	if err != nil {
 		return nil, err
 	}
 
+	// Authenticate user
 	claims, err := s.authenticator.AuthenticateToken(token)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, err.Error())
 	}
+
+	// Add authorization information back into the context so that other
+	// functions can get access to this information
 	ctx = context.WithValue(ctx, InterceptorContextTokenKey, claims)
 
 	return ctx, nil
@@ -53,20 +61,21 @@ func (s *sdkGrpcServer) loggerServerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	/*
-		if tokenInfo, ok := ctx.Value(InterceptorContextTokenKey).(*auth.Token); ok {
-			logrus.WithFields(logrus.Fields{
-				"user":   tokenInfo.User,
-				"email":  tokenInfo.Email,
-				"role":   tokenInfo.Role,
-				"method": info.FullMethod,
-			}).Info("called")
-		} else {
-			logrus.WithFields(logrus.Fields{
-				"method": info.FullMethod,
-			}).Info("called")
-		}
-	*/
+	if claims, ok := ctx.Value(InterceptorContextTokenKey).(*sdk_auth.Claims); ok {
+		// Change claims to JSON string to print into log
+		claimsJSON, _ := json.Marshal(claims)
+		logrus.WithFields(logrus.Fields{
+			"name":   claims.Name,
+			"email":  claims.Email,
+			"role":   claims.Role,
+			"claims": string(claimsJSON),
+			"method": info.FullMethod,
+		}).Info("audit")
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"method": info.FullMethod,
+		}).Info("audit without authentication")
+	}
 
 	return handler(ctx, req)
 }
