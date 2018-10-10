@@ -291,6 +291,7 @@ message VolumeSpec {
   // Passphrase for an encrypted volume
   string passphrase = 15;
   // SnapshotSchedule a well known string that specifies when snapshots should be taken.
+  // This is an internal value, please use `policies` instead.
   string snapshot_schedule = 16;
   // Scale allows autocreation of volumes.
   uint32 scale = 17;
@@ -313,6 +314,11 @@ message VolumeSpec {
   // Use to force a file system type which is not recommended.
   // The driver may still refuse to use the file system type.
   bool force_unsupported_fs_type = 28;
+  // Schedule policies affecting this volume. This is a read-only value.
+  // To set a volume schedule policy, first use
+  // OpenStorageSchedulePolicy.Create(), then apply the names of the policy
+  // in either OpenStorageVolume.Create() or OpenStorageVolume.Update()
+  repeated SdkSchedulePolicy schedule_policies = 29;
 }
 
 // VolumeSpecUpdate provides a method to set any of the VolumeSpec of an existing volume
@@ -351,6 +357,9 @@ message VolumeSpecUpdate {
   oneof sharedv4_opt { bool sharedv4 = 24; }
   // QueueDepth defines the desired block device queue depth
   oneof queue_depth_opt { uint32 queue_depth = 25; }
+  // Names of the schedule policies to apply to this volume. This will
+  // replace any values stored in the `VolumeSpec.policies`
+  oneof schedule_policies_opt { SdkSchedulePolicyNames schedule_policies = 26; }
 }
 
 // ReplicaSet set of machine IDs (nodes) to which part of this volume is erasure
@@ -1423,7 +1432,7 @@ message SdkSchedulePolicyCreateResponse {
 // Define a request to update a schedule policy
 message SdkSchedulePolicyUpdateRequest {
   // Schedule Policy
-  SdkSchedulePolicy SchedulePolicy = 1;
+  SdkSchedulePolicy schedule_policy = 1;
 }
 
 // Empty response
@@ -1529,6 +1538,12 @@ message SdkSchedulePolicyInterval {
     // Periodic policy
     SdkSchedulePolicyIntervalPeriodic periodic = 203;
   }
+}
+
+// Defines a set of schedule policies by name
+message SdkSchedulePolicyNames {
+  // Names of schedule policies
+  repeated string names = 1;
 }
 
 // Defines a schedule policy
@@ -2387,7 +2402,7 @@ message SdkVersion {
     // SDK version major value of this specification
     Major = 0;
     // SDK version minor value of this specification
-    Minor = 14;
+    Minor = 15;
     // SDK version patch value of this specification
     Patch = 0;
   }

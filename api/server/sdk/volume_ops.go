@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/libopenstorage/openstorage/api"
+	"github.com/libopenstorage/openstorage/pkg/sched"
 	"github.com/libopenstorage/openstorage/pkg/util"
 	"github.com/libopenstorage/openstorage/volume"
 	"github.com/portworx/kvdb"
@@ -295,7 +296,10 @@ func (s *VolumeServer) Update(
 	if err != nil {
 		return nil, err
 	}
-	spec := s.mergeVolumeSpecs(resp.GetVolume().GetSpec(), req.GetSpec())
+	spec, err := s.mergeVolumeSpecs(ctx, resp.GetVolume().GetSpec(), req.GetSpec())
+	if err != nil {
+		return nil, err
+	}
 
 	// Send to driver
 	if err := s.driver.Set(req.GetVolumeId(), req.GetLocator(), spec); err != nil {
@@ -329,7 +333,11 @@ func (s *VolumeServer) Stats(
 	}, nil
 }
 
-func (s *VolumeServer) mergeVolumeSpecs(vol *api.VolumeSpec, req *api.VolumeSpecUpdate) *api.VolumeSpec {
+func (s *VolumeServer) mergeVolumeSpecs(
+	ctx context.Context,
+	vol *api.VolumeSpec,
+	req *api.VolumeSpecUpdate,
+) (*api.VolumeSpec, error) {
 
 	spec := &api.VolumeSpec{}
 	spec.Shared = setSpecBool(vol.GetShared(), req.GetShared(), req.GetSharedOpt())
@@ -418,7 +426,74 @@ func (s *VolumeServer) mergeVolumeSpecs(vol *api.VolumeSpec, req *api.VolumeSpec
 		spec.QueueDepth = vol.GetQueueDepth()
 	}
 
-	return spec
+	if req.GetSnapshotScheduleOpt() != nil {
+		if req.GetSchedulePolicies() != nil {
+			// Save in SDK format
+			var err error
+			spec.SchedulePolicies, err = s.getschedulePolicies(
+				ctx,
+				req.GetSchedulePolicies())
+			if err != nil {
+				return nil, err
+			}
+
+			// Save in Schedule format
+			pt, err := sched.NewPolicyTagsFromSlice(req.GetSchedulePolicies().GetNames())
+			if err != nil {
+				return nil, status.Errorf(
+					codes.Internal,
+					"Unable to parse policies: %v", err)
+			}
+			snapscheds, err := sched.ParseSchedule(spec.GetSnapshotSchedule())
+			if err != nil {
+				return nil, status.Errorf(
+					codes.Internal,
+					"Unable to parse snapshot schedule: %v", err)
+			}
+			spec.SnapshotSchedule = sched.ScheduleSummary(snapscheds, pt)
+		} else {
+			// Remove SDK format
+			spec.SchedulePolicies = nil
+
+			// Remove from Schedule format
+			snapscheds, err := sched.ParseSchedule(spec.GetSnapshotSchedule())
+			if err != nil {
+				return nil, status.Errorf(
+					codes.Internal,
+					"Unable to parse snapshot schedule: %v", err)
+			}
+			spec.SnapshotSchedule = sched.ScheduleSummary(snapscheds, nil)
+		}
+	} else {
+		spec.SchedulePolicies = vol.GetSchedulePolicies()
+	}
+
+	return spec, nil
+}
+
+func (s *VolumeServer) getschedulePolicies(
+	ctx context.Context,
+	policyNames *api.SdkSchedulePolicyNames,
+) ([]*api.SdkSchedulePolicy, error) {
+
+	policies := make([]*api.SdkSchedulePolicy, 0)
+	schedServer := &SchedulePolicyServer{
+		cluster: s.cluster,
+	}
+
+	for _, name := range policyNames.GetNames() {
+		r, err := schedServer.Inspect(
+			ctx,
+			&api.SdkSchedulePolicyInspectRequest{
+				Name: name,
+			})
+		if err != nil {
+			return nil, err
+		}
+		policies = append(policies, r.GetPolicy())
+	}
+
+	return policies, nil
 }
 
 func setSpecBool(current, req bool, reqSet interface{}) bool {

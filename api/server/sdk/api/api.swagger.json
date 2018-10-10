@@ -1185,9 +1185,22 @@
       "title": "Defines a weekly schedule",
       "type": "object"
     },
+    "apiSdkSchedulePolicyNames": {
+      "properties": {
+        "names": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Names of schedule policies",
+          "type": "array"
+        }
+      },
+      "title": "Defines a set of schedule policies by name",
+      "type": "object"
+    },
     "apiSdkSchedulePolicyUpdateRequest": {
       "properties": {
-        "SchedulePolicy": {
+        "schedule_policy": {
           "$ref": "#/definitions/apiSdkSchedulePolicy",
           "title": "Schedule Policy"
         }
@@ -2170,6 +2183,13 @@
           "format": "int64",
           "type": "integer"
         },
+        "schedule_policies": {
+          "items": {
+            "$ref": "#/definitions/apiSdkSchedulePolicy"
+          },
+          "title": "Schedule policies affecting this volume. This is a read-only value.\nTo set a volume schedule policy, first use\nOpenStorageSchedulePolicy.Create(), then apply the names of the policy\nin either OpenStorageVolume.Create() or OpenStorageVolume.Update()",
+          "type": "array"
+        },
         "shared": {
           "description": "Shared is true if this volume can be remotely accessed.",
           "format": "boolean",
@@ -2191,7 +2211,7 @@
           "type": "integer"
         },
         "snapshot_schedule": {
-          "description": "SnapshotSchedule a well known string that specifies when snapshots should be taken.",
+          "description": "SnapshotSchedule a well known string that specifies when snapshots should be taken.\nThis is an internal value, please use `policies` instead.",
           "type": "string"
         },
         "sticky": {
@@ -2247,6 +2267,9 @@
         "scale": {
           "format": "int64",
           "type": "integer"
+        },
+        "schedule_policies": {
+          "$ref": "#/definitions/apiSdkSchedulePolicyNames"
         },
         "shared": {
           "format": "boolean",
@@ -2336,7 +2359,7 @@
   },
   "info": {
     "title": "OpenStorage SDK",
-    "version": "0.14.0"
+    "version": "0.15.0"
   },
   "paths": {
     "/v1/alerts": {
