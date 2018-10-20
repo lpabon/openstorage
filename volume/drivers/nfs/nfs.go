@@ -126,7 +126,7 @@ func Init(params map[string]string) (volume.VolumeDriver, error) {
 			if err != nil {
 				logrus.Printf("Unable to mount %s:%s at %s (%+v)",
 					v, inst.nfsPath, nfsMountPath+v, err)
-				return nil, err
+				// XXX return nil, err
 			}
 		}
 	}
@@ -275,7 +275,8 @@ func (d *driver) Create(
 		logrus.Println(err)
 		return "", err
 	}
-	var fsType api.FSType
+
+	// Setup volume object
 	if source != nil {
 		if len(source.Seed) != 0 {
 			seed, err := seed.New(source.Seed, locator.VolumeLabels)
@@ -291,51 +292,72 @@ func (d *driver) Create(
 				return "", err
 			}
 		}
-		fsType = api.FSType_FS_TYPE_NFS
-	} else if len(source.GetParent()) == 0 && d.driverType == api.DriverType_DRIVER_TYPE_BLOCK {
-		// This is not a snapshot, but a new volume
-		// so let's format the file
-		blockFile := path.Join(volPathParent, volumeID+nfsBlockFile)
-		f, err := os.Create(blockFile)
-		if err != nil {
-			logrus.Println(err)
-			return "", err
-		}
-		defer f.Close()
-
-		if err := f.Truncate(int64(spec.Size)); err != nil {
-			logrus.Println(err)
-			return "", err
-		}
-
-		// Format
-		dev, err := losetup.Attach(blockFile, 0, false)
-		if err != nil {
-			return "", err
-		}
-		logrus.Infof("Formatting %s with %v", dev, spec.Format)
-		cmd := "/sbin/mkfs." + spec.Format.SimpleString()
-		o, err := exec.Command(cmd, blockFile).Output()
-		if err != nil {
-			logrus.Warnf("Failed to run command %v %v: %v", cmd, dev, o)
-			return "", err
-		}
-		dev.Detach()
-		fsType = spec.Format
 	}
 
-	v := common.NewVolume(
-		volumeID,
-		fsType,
-		locator,
-		source,
-		spec,
-	)
-	v.DevicePath = path.Join(volPathParent, volumeID+nfsBlockFile)
+	// Create volume
+	var v *api.Volume
+	if d.driverType == api.DriverType_DRIVER_TYPE_BLOCK {
+		v = common.NewVolume(
+			volumeID,
+			spec.GetFormat(),
+			locator,
+			source,
+			spec,
+		)
+		if err := d.CreateVol(v); err != nil {
+			return "", err
+		}
 
-	if err := d.CreateVol(v); err != nil {
-		return "", err
+		if source != nil && len(source.GetParent()) != 0 {
+			// Need to clone
+			if err := d.clone(volumeID, source.GetParent()); err != nil {
+				return "", err
+			}
+		} else {
+			// This is not a snapshot, but a new volume
+			// so let's format the file
+			blockFile := path.Join(volPathParent, volumeID+nfsBlockFile)
+			f, err := os.Create(blockFile)
+			if err != nil {
+				logrus.Println(err)
+				return "", err
+			}
+			defer f.Close()
+
+			if err := f.Truncate(int64(spec.Size)); err != nil {
+				logrus.Println(err)
+				return "", err
+			}
+
+			// Format
+			dev, err := losetup.Attach(blockFile, 0, false)
+			if err != nil {
+				return "", err
+			}
+			logrus.Infof("Formatting %s with %v", dev, spec.Format)
+			cmd := "/sbin/mkfs." + spec.Format.SimpleString()
+			o, err := exec.Command(cmd, blockFile).Output()
+			if err != nil {
+				logrus.Warnf("Failed to run command %v %v: %v", cmd, dev, o)
+				return "", err
+			}
+			dev.Detach()
+
+		}
+	} else {
+		// File based
+		v = common.NewVolume(
+			volumeID,
+			api.FSType_FS_TYPE_NFS,
+			locator,
+			source,
+			spec,
+		)
+		if err := d.CreateVol(v); err != nil {
+			return "", err
+		}
 	}
+
 	return v.Id, err
 }
 
@@ -346,13 +368,13 @@ func (d *driver) Delete(volumeID string) error {
 		return err
 	}
 
-	// Delete the simulated block volume
-	os.Remove(v.DevicePath)
-
 	nfsVolPath, err := d.getNFSVolumePath(v)
 	if err != nil {
 		return err
 	}
+
+	// Delete the simulated block volume
+	os.Remove(nfsVolPath + nfsBlockFile)
 
 	// Delete the directory on the nfs server.
 	os.RemoveAll(nfsVolPath)
@@ -456,35 +478,21 @@ func (d *driver) Unmount(volumeID string, mountpath string, options map[string]s
 	return d.UpdateVol(v)
 }
 
-func (d *driver) Snapshot(volumeID string, readonly bool, locator *api.VolumeLocator, noRetry bool) (string, error) {
-	volIDs := []string{volumeID}
-	vols, err := d.Inspect(volIDs)
-	if err != nil {
-		return "", nil
-	}
-	source := &api.Source{Parent: volumeID}
-	locator.Name = d.getNewSnapVolName(source.Parent)
-
-	logrus.Infof("Creating snap vol name: %s", locator.Name)
-	newVolumeID, err := d.Create(locator, source, vols[0].Spec)
-	if err != nil {
-		return "", nil
-	}
-
+func (d *driver) clone(newVolumeID, volumeID string) error {
 	nfsVolPath, err := d.getNFSVolumePathById(volumeID)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	newNfsVolPath, err := d.getNFSVolumePathById(newVolumeID)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// NFS does not support snapshots, so just copy the files.
 	if err := copyDir(nfsVolPath, newNfsVolPath); err != nil {
 		d.Delete(newVolumeID)
-		return "", nil
+		return nil
 	}
 
 	// First try reflinks
@@ -517,12 +525,27 @@ func (d *driver) Snapshot(volumeID string, readonly bool, locator *api.VolumeLoc
 					nfsVolPath+nfsBlockFile,
 					newNfsVolPath+nfsBlockFile)
 			} else {
+				logrus.Errorf("Failed to clone %s to %s: %v",
+					nfsVolPath+nfsBlockFile,
+					newNfsVolPath+nfsBlockFile,
+					err)
 				d.Delete(newVolumeID)
-				return "", nil
+				return nil
 			}
 		}
 	}
-	return newVolumeID, nil
+	return nil
+}
+
+func (d *driver) Snapshot(volumeID string, readonly bool, locator *api.VolumeLocator, noRetry bool) (string, error) {
+	volIDs := []string{volumeID}
+	vols, err := d.Inspect(volIDs)
+	if err != nil {
+		return "", nil
+	}
+	source := &api.Source{Parent: volumeID}
+	logrus.Infof("Creating snap vol name: %s", locator.Name)
+	return d.Create(locator, source, vols[0].Spec)
 }
 
 func (d *driver) Restore(volumeID string, snapID string) error {
