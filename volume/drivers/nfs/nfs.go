@@ -49,6 +49,7 @@ type driver struct {
 	nfsServers []string
 	nfsPath    string
 	mounter    mount.Manager
+	driverType api.DriverType
 }
 
 func Init(params map[string]string) (volume.VolumeDriver, error) {
@@ -62,7 +63,6 @@ func Init(params map[string]string) (volume.VolumeDriver, error) {
 	} else {
 		logrus.Printf("NFS driver initializing with %s:%s ", server, path)
 	}
-
 	//support more than one server using CSV
 	//TB-FIXME: modify driver params flow to support map[string]struct/array
 	servers := strings.Split(server, ",")
@@ -84,6 +84,13 @@ func Init(params map[string]string) (volume.VolumeDriver, error) {
 		mounter:            mounter,
 		CloudBackupDriver:  volume.CloudBackupNotSupported,
 		CloudMigrateDriver: volume.CloudMigrateNotSupported,
+	}
+	blockEnabled, ok := params["block"]
+	if ok && blockEnabled == "true" {
+		logrus.Info("NFS driver now in block mode")
+		inst.driverType = api.DriverType_DRIVER_TYPE_BLOCK
+	} else {
+		inst.driverType = api.DriverType_DRIVER_TYPE_FILE
 	}
 
 	//make directory for each nfs server
@@ -143,7 +150,7 @@ func (d *driver) Name() string {
 }
 
 func (d *driver) Type() api.DriverType {
-	return Type
+	return d.driverType
 }
 
 func (d *driver) Version() (*api.StorageVersion, error) {
@@ -268,6 +275,7 @@ func (d *driver) Create(
 		logrus.Println(err)
 		return "", err
 	}
+	var fsType api.FSType
 	if source != nil {
 		if len(source.Seed) != 0 {
 			seed, err := seed.New(source.Seed, spec.VolumeLabels)
@@ -283,38 +291,42 @@ func (d *driver) Create(
 				return "", err
 			}
 		}
-	}
+		fsType = api.FSType_FS_TYPE_NFS
+	} else if len(source.GetParent()) == 0 && d.driverType == api.DriverType_DRIVER_TYPE_BLOCK {
+		// This is not a snapshot, but a new volume
+		// so let's format the file
+		blockFile := path.Join(volPathParent, volumeID+nfsBlockFile)
+		f, err := os.Create(blockFile)
+		if err != nil {
+			logrus.Println(err)
+			return "", err
+		}
+		defer f.Close()
 
-	blockFile := path.Join(volPathParent, volumeID+nfsBlockFile)
-	f, err := os.Create(blockFile)
-	if err != nil {
-		logrus.Println(err)
-		return "", err
-	}
-	defer f.Close()
+		if err := f.Truncate(int64(spec.Size)); err != nil {
+			logrus.Println(err)
+			return "", err
+		}
 
-	if err := f.Truncate(int64(spec.Size)); err != nil {
-		logrus.Println(err)
-		return "", err
+		// Format
+		dev, err := losetup.Attach(blockFile, 0, false)
+		if err != nil {
+			return "", err
+		}
+		logrus.Infof("Formatting %s with %v", dev, spec.Format)
+		cmd := "/sbin/mkfs." + spec.Format.SimpleString()
+		o, err := exec.Command(cmd, blockFile).Output()
+		if err != nil {
+			logrus.Warnf("Failed to run command %v %v: %v", cmd, dev, o)
+			return "", err
+		}
+		dev.Detach()
+		fsType = spec.Format
 	}
-
-	// Format
-	dev, err := losetup.Attach(blockFile, 0, false)
-	if err != nil {
-		return "", err
-	}
-	logrus.Infof("Formatting %s with %v", dev, spec.Format)
-	cmd := "/sbin/mkfs." + spec.Format.SimpleString()
-	o, err := exec.Command(cmd, blockFile).Output()
-	if err != nil {
-		logrus.Warnf("Failed to run command %v %v: %v", cmd, dev, o)
-		return "", err
-	}
-	dev.Detach()
 
 	v := common.NewVolume(
 		volumeID,
-		api.FSType_FS_TYPE_NFS,
+		fsType,
 		locator,
 		source,
 		spec,
@@ -400,10 +412,7 @@ func (d *driver) Mount(volumeID string, mountpath string, options map[string]str
 		if v.GetState() != api.VolumeState_VOLUME_STATE_ATTACHED {
 			return fmt.Errorf("Voume %s is not attached", volumeID)
 		}
-		mountExists, err := d.mounter.Exists(v.GetAttachPath()[0], mountpath)
-		if err != nil {
-			return err
-		}
+		mountExists, _ := d.mounter.Exists(v.DevicePath, mountpath)
 		if !mountExists {
 			if err := syscall.Mount(v.DevicePath, mountpath, v.Spec.Format.SimpleString(), 0, ""); err != nil {
 				return fmt.Errorf("Failed to mount %v at %v: %v", v.DevicePath, mountpath, err)
@@ -476,6 +485,42 @@ func (d *driver) Snapshot(volumeID string, readonly bool, locator *api.VolumeLoc
 	if err := copyDir(nfsVolPath, newNfsVolPath); err != nil {
 		d.Delete(newVolumeID)
 		return "", nil
+	}
+
+	// First try reflinks
+	_, err = exec.Command(
+		"/bin/cp",
+		"--reflink=always",
+		nfsVolPath+nfsBlockFile,
+		newNfsVolPath+nfsBlockFile,
+	).Output()
+	if err == nil {
+		logrus.Infof("Cloned %s to %s using reflink copy",
+			nfsVolPath+nfsBlockFile,
+			newNfsVolPath+nfsBlockFile)
+	} else {
+		// Second try sparse copy
+		_, err = exec.Command(
+			"/bin/cp",
+			"--sparse=always",
+			nfsVolPath+nfsBlockFile,
+			newNfsVolPath+nfsBlockFile,
+		).Output()
+		if err == nil {
+			logrus.Infof("Cloned %s to %s using sparse copy",
+				nfsVolPath+nfsBlockFile,
+				newNfsVolPath+nfsBlockFile)
+		} else {
+			// if block, copy the block file also
+			if err := copyFile(nfsVolPath+nfsBlockFile, newNfsVolPath+nfsBlockFile); err == nil {
+				logrus.Infof("Cloned %s to %s using slow copy",
+					nfsVolPath+nfsBlockFile,
+					newNfsVolPath+nfsBlockFile)
+			} else {
+				d.Delete(newVolumeID)
+				return "", nil
+			}
+		}
 	}
 	return newVolumeID, nil
 }
