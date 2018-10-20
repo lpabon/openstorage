@@ -324,25 +324,27 @@ func (d *driver) Create(
 			}
 			defer f.Close()
 
+			// Create sparse file
 			if err := f.Truncate(int64(spec.Size)); err != nil {
 				logrus.Println(err)
 				return "", err
 			}
 
 			// Format
-			dev, err := losetup.Attach(blockFile, 0, false)
-			if err != nil {
-				return "", err
+			if spec.GetFormat() != api.FSType_FS_TYPE_NONE {
+				dev, err := losetup.Attach(blockFile, 0, false)
+				if err != nil {
+					return "", err
+				}
+				logrus.Infof("Formatting %s with %v", dev, spec.Format)
+				cmd := "/sbin/mkfs." + spec.Format.SimpleString()
+				o, err := exec.Command(cmd, blockFile).Output()
+				if err != nil {
+					logrus.Warnf("Failed to run command %v %v: %v", cmd, dev, o)
+					return "", err
+				}
+				dev.Detach()
 			}
-			logrus.Infof("Formatting %s with %v", dev, spec.Format)
-			cmd := "/sbin/mkfs." + spec.Format.SimpleString()
-			o, err := exec.Command(cmd, blockFile).Output()
-			if err != nil {
-				logrus.Warnf("Failed to run command %v %v: %v", cmd, dev, o)
-				return "", err
-			}
-			dev.Detach()
-
 		}
 	} else {
 		// File based
