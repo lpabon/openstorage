@@ -2127,6 +2127,12 @@
 			"revisionTime": "2017-10-25T18:01:53Z"
 		},
 		{
+			"checksumSHA1": "VLBt1bkHObYI0PUkdbaoctAE9fE=",
+			"path": "gopkg.in/freddierice/go-losetup.v1",
+			"revision": "fc9adea44124401d8bfef3a97eaf61b5d44cc2c6",
+			"revisionTime": "2017-04-07T17:50:16Z"
+		},
+		{
 			"checksumSHA1": "tr9VfMj5HNs7UqT6MrGnqMSakOE=",
 			"path": "gopkg.in/jmcvetta/napping.v3",
 			"revision": "6c845f879618cc607cbc2bb1d8e817e618505341",
