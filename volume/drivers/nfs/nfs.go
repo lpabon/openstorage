@@ -371,23 +371,43 @@ func (d *driver) Mount(volumeID string, mountpath string, options map[string]str
 		return err
 	}
 
-	srcPath := path.Join(":", nfsPath, volumeID)
-	mountExists, err := d.mounter.Exists(srcPath, mountpath)
-	if !mountExists {
-		d.mounter.Unmount(path.Join(nfsPath, volumeID), mountpath,
-			syscall.MNT_DETACH, 0, nil)
-		if err := d.mounter.Mount(
-			0, path.Join(nfsPath, volumeID),
-			mountpath,
-			string(v.Spec.Format),
-			syscall.MS_BIND,
-			"",
-			0,
-			nil,
-		); err != nil {
-			logrus.Printf("Cannot mount %s at %s because %+v",
-				path.Join(nfsPath, volumeID), mountpath, err)
+	if v.GetSpec().GetSize() == 0 {
+		// File access
+		srcPath := path.Join(":", nfsPath, volumeID)
+		mountExists, err := d.mounter.Exists(srcPath, mountpath)
+		if err != nil {
 			return err
+		}
+		if !mountExists {
+			d.mounter.Unmount(path.Join(nfsPath, volumeID), mountpath,
+				syscall.MNT_DETACH, 0, nil)
+			if err := d.mounter.Mount(
+				0, path.Join(nfsPath, volumeID),
+				mountpath,
+				string(v.Spec.Format),
+				syscall.MS_BIND,
+				"",
+				0,
+				nil,
+			); err != nil {
+				logrus.Printf("Cannot mount %s at %s because %+v",
+					path.Join(nfsPath, volumeID), mountpath, err)
+				return err
+			}
+		}
+	} else {
+		// Block access
+		if v.GetState() != api.VolumeState_VOLUME_STATE_ATTACHED {
+			return fmt.Errorf("Voume %s is not attached", volumeID)
+		}
+		mountExists, err := d.mounter.Exists(v.GetAttachPath()[0], mountpath)
+		if err != nil {
+			return err
+		}
+		if !mountExists {
+			if err := syscall.Mount(v.DevicePath, mountpath, v.Spec.Format.SimpleString(), 0, ""); err != nil {
+				return fmt.Errorf("Failed to mount %v at %v: %v", v.DevicePath, mountpath, err)
+			}
 		}
 	}
 	if v.AttachPath == nil {
@@ -395,6 +415,7 @@ func (d *driver) Mount(volumeID string, mountpath string, options map[string]str
 	}
 	v.AttachPath = append(v.AttachPath, mountpath)
 	return d.UpdateVol(v)
+
 }
 
 func (d *driver) Unmount(volumeID string, mountpath string, options map[string]string) error {
@@ -411,12 +432,18 @@ func (d *driver) Unmount(volumeID string, mountpath string, options map[string]s
 		return err
 	}
 
-	err = d.mounter.Unmount(nfsVolPath, mountpath,
-		syscall.MNT_DETACH, 0, nil)
-	if err != nil {
-		return err
+	if v.GetSpec().GetSize() == 0 {
+		err = d.mounter.Unmount(nfsVolPath, mountpath, syscall.MNT_DETACH, 0, nil)
+		if err != nil {
+			return err
+		}
+		v.AttachPath = d.mounter.Mounts(nfsVolPath)
+	} else {
+		if err := syscall.Unmount(mountpath, 0); err != nil {
+			return err
+		}
+		v.AttachPath = nil
 	}
-	v.AttachPath = d.mounter.Mounts(nfsVolPath)
 	return d.UpdateVol(v)
 }
 
@@ -506,7 +533,7 @@ func (d *driver) Attach(volumeID string, attachOptions map[string]string) (strin
 	}
 
 	// Update volume info
-	v.AttachPath = []string{dev.Path()}
+	v.DevicePath = dev.Path()
 	v.State = api.VolumeState_VOLUME_STATE_ATTACHED
 	if err := d.UpdateVol(v); err != nil {
 		dev.Detach()
@@ -531,10 +558,9 @@ func (d *driver) Detach(volumeID string, options map[string]string) error {
 		// if it is not attached, just return
 		return nil
 	}
-	attachPath := v.GetAttachPath()[0]
 
 	// Detach -- code from https://github.com/freddierice/go-losetup
-	loopFile, err := os.OpenFile(attachPath, os.O_RDONLY, 0660)
+	loopFile, err := os.OpenFile(v.GetDevicePath(), os.O_RDONLY, 0660)
 	if err != nil {
 		return fmt.Errorf("could not open loop device")
 	}
@@ -546,7 +572,7 @@ func (d *driver) Detach(volumeID string, options map[string]string) error {
 	}
 
 	// Update volume info
-	v.AttachPath = []string{}
+	v.DevicePath = ""
 	v.State = api.VolumeState_VOLUME_STATE_NONE
 	if err := d.UpdateVol(v); err != nil {
 		return err
