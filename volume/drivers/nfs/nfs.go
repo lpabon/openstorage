@@ -108,10 +108,8 @@ func Init(params map[string]string) (volume.VolumeDriver, error) {
 	//mount each nfs server
 	for _, v := range inst.nfsServers {
 		// If src is already mounted at dest, leave it be.
-		mountExists, err := mounter.Exists(src, nfsMountPath+v)
-		if !mountExists {
-			// Mount the nfs server locally on a unique path.
-			syscall.Unmount(nfsMountPath+v, 0)
+		o, err := exec.Command("/bin/mount", "-t", "nfs").CombinedOutput()
+		if !strings.Contains(string(o), src+" on "+nfsMountPath+v) {
 			if server != "" {
 				err = syscall.Mount(
 					src,
@@ -124,10 +122,14 @@ func Init(params map[string]string) (volume.VolumeDriver, error) {
 				err = syscall.Mount(src, nfsMountPath+v, "", syscall.MS_BIND, "")
 			}
 			if err != nil {
-				logrus.Printf("Unable to mount %s:%s at %s (%+v)",
+				logrus.Errorf("Unable to mount %s:%s at %s (%+v)",
 					v, inst.nfsPath, nfsMountPath+v, err)
-				// XXX return nil, err
+				return nil, err
+			} else {
+				logrus.Infof("NFS: %s mounted", nfsMountPath+v)
 			}
+		} else {
+			logrus.Infof("NFS: %s already mounted", nfsMountPath+v)
 		}
 	}
 
