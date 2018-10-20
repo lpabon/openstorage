@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
+	losetup "gopkg.in/freddierice/go-losetup.v1"
 
 	"math/rand"
 	"strings"
@@ -19,6 +22,7 @@ import (
 	"github.com/libopenstorage/openstorage/config"
 	"github.com/libopenstorage/openstorage/pkg/mount"
 	"github.com/libopenstorage/openstorage/pkg/seed"
+	"github.com/libopenstorage/openstorage/pkg/util"
 	"github.com/libopenstorage/openstorage/volume"
 	"github.com/libopenstorage/openstorage/volume/drivers/common"
 	"github.com/pborman/uuid"
@@ -281,7 +285,8 @@ func (d *driver) Create(
 		}
 	}
 
-	f, err := os.Create(path.Join(volPathParent, volumeID+nfsBlockFile))
+	blockFile := path.Join(volPathParent, volumeID+nfsBlockFile)
+	f, err := os.Create(blockFile)
 	if err != nil {
 		logrus.Println(err)
 		return "", err
@@ -292,6 +297,20 @@ func (d *driver) Create(
 		logrus.Println(err)
 		return "", err
 	}
+
+	// Format
+	dev, err := losetup.Attach(blockFile, 0, false)
+	if err != nil {
+		return "", err
+	}
+	logrus.Infof("Formatting %s with %v", dev, spec.Format)
+	cmd := "/sbin/mkfs." + spec.Format.SimpleString()
+	o, err := exec.Command(cmd, blockFile).Output()
+	if err != nil {
+		logrus.Warnf("Failed to run command %v %v: %v", cmd, dev, o)
+		return "", err
+	}
+	dev.Detach()
 
 	v := common.NewVolume(
 		volumeID,
@@ -467,11 +486,72 @@ func (d *driver) Attach(volumeID string, attachOptions map[string]string) (strin
 	if err != nil {
 		return "", err
 	}
+	blockFile := path.Join(nfsPath, volumeID+nfsBlockFile)
 
-	return path.Join(nfsPath, volumeID+nfsBlockFile), nil
+	// Check if it is block
+	v, err := util.VolumeFromName(d, volumeID)
+	if err != nil {
+		return "", err
+	}
+
+	// If it has no size, no need to attach
+	if v.GetSpec().GetSize() == 0 {
+		return blockFile, nil
+	}
+
+	// If it is a block device, create a loop device
+	dev, err := losetup.Attach(blockFile, 0, false /* not read only: TODO change this */)
+	if err != nil {
+		return "", err
+	}
+
+	// Update volume info
+	v.AttachPath = []string{dev.Path()}
+	v.State = api.VolumeState_VOLUME_STATE_ATTACHED
+	if err := d.UpdateVol(v); err != nil {
+		dev.Detach()
+		return "", err
+	}
+
+	return dev.Path(), nil
 }
 
 func (d *driver) Detach(volumeID string, options map[string]string) error {
+
+	// Get volume info
+	v, err := util.VolumeFromName(d, volumeID)
+	if err != nil {
+		return err
+	}
+
+	// If it has no size, no need to detach
+	if v.GetSpec().GetSize() == 0 {
+		return nil
+	} else if v.GetState() != api.VolumeState_VOLUME_STATE_ATTACHED {
+		// if it is not attached, just return
+		return nil
+	}
+	attachPath := v.GetAttachPath()[0]
+
+	// Detach -- code from https://github.com/freddierice/go-losetup
+	loopFile, err := os.OpenFile(attachPath, os.O_RDONLY, 0660)
+	if err != nil {
+		return fmt.Errorf("could not open loop device")
+	}
+	defer loopFile.Close()
+
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, loopFile.Fd(), losetup.ClrFd, 0)
+	if errno != 0 {
+		return fmt.Errorf("error clearing loopfile: %v", errno)
+	}
+
+	// Update volume info
+	v.AttachPath = []string{}
+	v.State = api.VolumeState_VOLUME_STATE_NONE
+	if err := d.UpdateVol(v); err != nil {
+		return err
+	}
+
 	return nil
 }
 
