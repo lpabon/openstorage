@@ -692,7 +692,7 @@ func (d *driver) Detach(volumeID string, options map[string]string) error {
 
 	// Update volume info
 	v.DevicePath = ""
-	v.State = api.VolumeState_VOLUME_STATE_NONE
+	v.State = api.VolumeState_VOLUME_STATE_AVAILABLE
 	if err := d.UpdateVol(v); err != nil {
 		return err
 	}
