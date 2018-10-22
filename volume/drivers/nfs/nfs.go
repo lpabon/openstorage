@@ -302,8 +302,26 @@ func (d *driver) Create(
 			return "", err
 		}
 
-		v.State = api.VolumeState_VOLUME_STATE_AVAILABLE
+		// Setup volume
+		v.State = api.VolumeState_VOLUME_STATE_PENDING
 		if err := d.CreateVol(v); err != nil {
+			return "", err
+		}
+
+		// Check for cloning
+		if source != nil && len(source.GetParent()) != 0 {
+			// Need to clone
+			if err := d.clone(volumeID, source.GetParent()); err != nil {
+				d.Delete(v.GetId())
+				return "", err
+			}
+		}
+
+		// Set to ready
+		v.State = api.VolumeState_VOLUME_STATE_AVAILABLE
+		if err := d.UpdateVol(v); err != nil {
+			d.Delete(v.GetId())
+			logrus.Errorf("Failed to update volume %s to ready state: %v", volumeID, err)
 			return "", err
 		}
 	} else {
@@ -508,50 +526,59 @@ func (d *driver) clone(newVolumeID, volumeID string) error {
 		return err
 	}
 
-	// NFS does not support snapshots, so just copy the files.
-	if err := copyDir(nfsVolPath, newNfsVolPath); err != nil {
-		d.Delete(newVolumeID)
-		return nil
+	v, err := d.GetVol(volumeID)
+	if err != nil {
+		return err
 	}
 
-	// Copy the block file. Could take a while so try to uptimize it.
-	_, err = exec.Command(
-		"/bin/cp",
-		"--reflink=always",
-		nfsVolPath+nfsBlockFile,
-		newNfsVolPath+nfsBlockFile,
-	).Output()
-	if err == nil {
-		logrus.Infof("Cloned %s to %s using reflink copy",
-			nfsVolPath+nfsBlockFile,
-			newNfsVolPath+nfsBlockFile)
+	// NFS does not support snapshots, so just copy the files.
+
+	if v.GetSpec().GetShared() {
+		// Copy directory
+		if err := copyDir(nfsVolPath, newNfsVolPath); err != nil {
+			d.Delete(newVolumeID)
+			return err
+		}
 	} else {
-		// Second try sparse copy
+		// Copy the block file. Could take a while so try to optimize it.
 		_, err = exec.Command(
 			"/bin/cp",
-			"--sparse=always",
+			"--reflink=always",
 			nfsVolPath+nfsBlockFile,
 			newNfsVolPath+nfsBlockFile,
 		).Output()
 		if err == nil {
-			logrus.Infof("Cloned %s to %s using sparse copy",
+			logrus.Infof("Cloned %s to %s using reflink copy",
 				nfsVolPath+nfsBlockFile,
 				newNfsVolPath+nfsBlockFile)
 		} else {
-			// if block, copy the block file also
-			if err := copyFile(nfsVolPath+nfsBlockFile, newNfsVolPath+nfsBlockFile); err == nil {
-				logrus.Infof("Cloned %s to %s using slow copy",
+			// Second try sparse copy
+			_, err = exec.Command(
+				"/bin/cp",
+				"--sparse=always",
+				nfsVolPath+nfsBlockFile,
+				newNfsVolPath+nfsBlockFile,
+			).Output()
+			if err == nil {
+				logrus.Infof("Cloned %s to %s using sparse copy",
 					nfsVolPath+nfsBlockFile,
 					newNfsVolPath+nfsBlockFile)
 			} else {
-				logrus.Errorf("Failed to clone %s to %s: %v",
-					nfsVolPath+nfsBlockFile,
-					newNfsVolPath+nfsBlockFile,
-					err)
-				return fmt.Errorf("Failed to clone %s to %s: %v",
-					nfsVolPath+nfsBlockFile,
-					newNfsVolPath+nfsBlockFile,
-					err)
+				// if block, copy the block file also
+				if err := copyFile(nfsVolPath+nfsBlockFile, newNfsVolPath+nfsBlockFile); err == nil {
+					logrus.Infof("Cloned %s to %s using slow copy",
+						nfsVolPath+nfsBlockFile,
+						newNfsVolPath+nfsBlockFile)
+				} else {
+					logrus.Errorf("Failed to clone %s to %s: %v",
+						nfsVolPath+nfsBlockFile,
+						newNfsVolPath+nfsBlockFile,
+						err)
+					return fmt.Errorf("Failed to clone %s to %s: %v",
+						nfsVolPath+nfsBlockFile,
+						newNfsVolPath+nfsBlockFile,
+						err)
+				}
 			}
 		}
 	}
