@@ -146,7 +146,7 @@ func (d *driver) Name() string {
 }
 
 func (d *driver) Type() api.DriverType {
-	return d.driverType
+	return Type
 }
 
 func (d *driver) Version() (*api.StorageVersion, error) {
@@ -262,15 +262,8 @@ func (d *driver) Create(
 
 		labels["server"] = server
 	}
-
-	// Create a directory on the NFS server with this UUID.
 	volPathParent := path.Join(nfsMountPath, labels["server"])
 	volPath := path.Join(volPathParent, volumeID)
-	err := os.MkdirAll(volPath, 0744)
-	if err != nil {
-		logrus.Println(err)
-		return "", err
-	}
 
 	// Setup volume object
 	if source != nil {
@@ -292,7 +285,32 @@ func (d *driver) Create(
 
 	// Create volume
 	var v *api.Volume
-	if spec.GetSize() != 0 {
+	if spec.GetShared() {
+		// File based
+		v = common.NewVolume(
+			volumeID,
+			api.FSType_FS_TYPE_NFS,
+			locator,
+			source,
+			spec,
+		)
+
+		// Create a directory on the NFS server with this UUID.
+		err := os.MkdirAll(volPath, 0744)
+		if err != nil {
+			logrus.Println(err)
+			return "", err
+		}
+
+		v.State = api.VolumeState_VOLUME_STATE_AVAILABLE
+		if err := d.CreateVol(v); err != nil {
+			return "", err
+		}
+	} else {
+		// Block volume
+		if spec.GetSize() == 0 {
+			return "", fmt.Errorf("Cannot have size of zero on block volume")
+		}
 		v = common.NewVolume(
 			volumeID,
 			spec.GetFormat(),
@@ -300,23 +318,26 @@ func (d *driver) Create(
 			source,
 			spec,
 		)
+
+		// Set as pending until the volume is ready
+		v.State = api.VolumeState_VOLUME_STATE_PENDING
 		if err := d.CreateVol(v); err != nil {
 			return "", err
 		}
 
+		// Check if this from as a clone
 		if source != nil && len(source.GetParent()) != 0 {
 			// Need to clone
 			if err := d.clone(volumeID, source.GetParent()); err != nil {
-				d.Delete(newVolumeID)
+				d.Delete(v.GetId())
 				return "", err
 			}
 		} else {
-			// This is not a snapshot, but a new volume
-			// so let's format the file
+			// This is a new volume
 			blockFile := path.Join(volPathParent, volumeID+nfsBlockFile)
 			f, err := os.Create(blockFile)
 			if err != nil {
-				logrus.Println(err)
+				logrus.Errorf("Unable to create block file %s: %v", blockFile, err)
 				return "", err
 			}
 			defer f.Close()
@@ -343,21 +364,17 @@ func (d *driver) Create(
 				dev.Detach()
 			}
 		}
-	} else {
-		// File based
-		v = common.NewVolume(
-			volumeID,
-			api.FSType_FS_TYPE_NFS,
-			locator,
-			source,
-			spec,
-		)
-		if err := d.CreateVol(v); err != nil {
+
+		// Set to ready
+		v.State = api.VolumeState_VOLUME_STATE_AVAILABLE
+		if err := d.UpdateVol(v); err != nil {
+			d.Delete(v.GetId())
+			logrus.Errorf("Failed to update volume %s to ready state: %v", volumeID, err)
 			return "", err
 		}
 	}
 
-	return v.Id, err
+	return v.Id, nil
 }
 
 func (d *driver) Delete(volumeID string) error {
@@ -404,16 +421,19 @@ func (d *driver) Mount(volumeID string, mountpath string, options map[string]str
 		return err
 	}
 
-	if v.GetSpec().GetSize() == 0 {
+	if v.GetSpec().GetShared() {
+		if v.GetState() != api.VolumeState_VOLUME_STATE_AVAILABLE {
+			return fmt.Errorf("Volume is not in an available state")
+		}
 		// File access
 		srcPath := path.Join(":", nfsPath, volumeID)
-		mountExists, err := d.mounter.Exists(srcPath, mountpath)
-		if err != nil {
-			return err
-		}
+		mountExists, _ := d.mounter.Exists(srcPath, mountpath)
 		if !mountExists {
-			d.mounter.Unmount(path.Join(nfsPath, volumeID), mountpath,
-				syscall.MNT_DETACH, 0, nil)
+			/*
+				THIS was here and probably needs to be removed
+				d.mounter.Unmount(path.Join(nfsPath, volumeID), mountpath,
+					syscall.MNT_DETACH, 0, nil)
+			*/
 			if err := d.mounter.Mount(
 				0, path.Join(nfsPath, volumeID),
 				mountpath,
@@ -462,7 +482,7 @@ func (d *driver) Unmount(volumeID string, mountpath string, options map[string]s
 		return err
 	}
 
-	if v.GetSpec().GetSize() == 0 {
+	if v.GetSpec().GetShared() {
 		err = d.mounter.Unmount(nfsVolPath, mountpath, syscall.MNT_DETACH, 0, nil)
 		if err != nil {
 			return err
@@ -591,8 +611,8 @@ func (d *driver) Attach(volumeID string, attachOptions map[string]string) (strin
 	}
 
 	// If it has no size, no need to attach
-	if v.GetSpec().GetSize() == 0 {
-		return blockFile, nil
+	if v.GetSpec().GetShared() {
+		return nfsPath, nil
 	} else if v.GetState() == api.VolumeState_VOLUME_STATE_ATTACHED {
 		// if it already attached.
 		return v.GetDevicePath(), nil
@@ -624,7 +644,7 @@ func (d *driver) Detach(volumeID string, options map[string]string) error {
 	}
 
 	// If it has no size, no need to detach
-	if v.GetSpec().GetSize() == 0 {
+	if v.GetSpec().GetShared() {
 		return nil
 	} else if v.GetState() != api.VolumeState_VOLUME_STATE_ATTACHED {
 		// if it is not attached, just return
