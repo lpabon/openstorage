@@ -31,10 +31,12 @@ import (
 
 const (
 	Name         = "nfs"
-	Type         = api.DriverType_DRIVER_TYPE_FILE
 	NfsDBKey     = "OpenStorageNFSKey"
 	nfsMountPath = "/var/lib/openstorage/nfs/"
 	nfsBlockFile = ".blockdevice"
+
+	// Set to block, but it will handle size 0 as file based
+	Type = api.DriverType_DRIVER_TYPE_BLOCK
 )
 
 // Implements the open storage volume interface.
@@ -49,7 +51,6 @@ type driver struct {
 	nfsServers []string
 	nfsPath    string
 	mounter    mount.Manager
-	driverType api.DriverType
 }
 
 func Init(params map[string]string) (volume.VolumeDriver, error) {
@@ -84,13 +85,6 @@ func Init(params map[string]string) (volume.VolumeDriver, error) {
 		mounter:            mounter,
 		CloudBackupDriver:  volume.CloudBackupNotSupported,
 		CloudMigrateDriver: volume.CloudMigrateNotSupported,
-	}
-	blockEnabled, ok := params["block"]
-	if ok && blockEnabled == "true" {
-		logrus.Info("NFS driver now in block mode")
-		inst.driverType = api.DriverType_DRIVER_TYPE_BLOCK
-	} else {
-		inst.driverType = api.DriverType_DRIVER_TYPE_FILE
 	}
 
 	//make directory for each nfs server
@@ -298,7 +292,7 @@ func (d *driver) Create(
 
 	// Create volume
 	var v *api.Volume
-	if d.driverType == api.DriverType_DRIVER_TYPE_BLOCK {
+	if spec.GetSize() != 0 {
 		v = common.NewVolume(
 			volumeID,
 			spec.GetFormat(),
@@ -313,6 +307,7 @@ func (d *driver) Create(
 		if source != nil && len(source.GetParent()) != 0 {
 			// Need to clone
 			if err := d.clone(volumeID, source.GetParent()); err != nil {
+				d.Delete(newVolumeID)
 				return "", err
 			}
 		} else {
@@ -499,7 +494,7 @@ func (d *driver) clone(newVolumeID, volumeID string) error {
 		return nil
 	}
 
-	// First try reflinks
+	// Copy the block file. Could take a while so try to uptimize it.
 	_, err = exec.Command(
 		"/bin/cp",
 		"--reflink=always",
@@ -533,8 +528,10 @@ func (d *driver) clone(newVolumeID, volumeID string) error {
 					nfsVolPath+nfsBlockFile,
 					newNfsVolPath+nfsBlockFile,
 					err)
-				d.Delete(newVolumeID)
-				return nil
+				return fmt.Errorf("Failed to clone %s to %s: %v",
+					nfsVolPath+nfsBlockFile,
+					newNfsVolPath+nfsBlockFile,
+					err)
 			}
 		}
 	}
@@ -596,6 +593,9 @@ func (d *driver) Attach(volumeID string, attachOptions map[string]string) (strin
 	// If it has no size, no need to attach
 	if v.GetSpec().GetSize() == 0 {
 		return blockFile, nil
+	} else if v.GetState() == api.VolumeState_VOLUME_STATE_ATTACHED {
+		// if it already attached.
+		return v.GetDevicePath(), nil
 	}
 
 	// If it is a block device, create a loop device
