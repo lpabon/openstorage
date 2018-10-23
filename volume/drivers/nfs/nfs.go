@@ -402,6 +402,10 @@ func (d *driver) Delete(volumeID string) error {
 		return err
 	}
 
+	if v.GetState() == api.VolumeState_VOLUME_STATE_ATTACHED {
+		return fmt.Errorf("Volume is still attached and cannot be deleted")
+	}
+
 	nfsVolPath, err := d.getNFSVolumePath(v)
 	if err != nil {
 		return err
