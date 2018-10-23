@@ -205,7 +205,7 @@ docker-build-mock-sdk-server: osd
 	docker build -t $(IMAGE_MOCKSDKSERVER) -f Dockerfile.sdk .
 
 docker-build-csi-nfs: osd
-	docker build -t openstorage/csi-nfs -f Dockerfile.csi-nfs .
+	docker build -t quay.io/openstorage/csi-nfs -f Dockerfile.csi-nfs .
 
 docker-build-osd-dev-base:
 	docker build -t quay.io/openstorage/osd-dev-base -f Dockerfile.osd-dev-base .
