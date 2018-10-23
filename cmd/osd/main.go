@@ -100,6 +100,11 @@ func main() {
 			Usage: "gRPC REST Gateway port for SDK. Example: 9110",
 			Value: "9110",
 		},
+		cli.StringFlag{
+			Name:  "nodeid",
+			Usage: "Name of this node",
+			Value: "1",
+		},
 	}
 	app.Action = wrapAction(start)
 	app.Commands = []cli.Command{
@@ -187,6 +192,12 @@ func start(c *cli.Context) error {
 	scheme := u.Scheme
 	u.Scheme = "http"
 
+	// Override nodeid if passed in the command line
+	// This value can be set automatically by Kubernetes if used in a DaemonSet
+	if len(c.String("nodeid")) != 0 {
+		cfg.Osd.ClusterConfig.NodeId = c.String("nodeid")
+	}
+
 	kv, err := kvdb.New(scheme, "openstorage", []string{u.String()}, nil, logrus.Panicf)
 	if err != nil {
 		return fmt.Errorf("Failed to initialize KVDB: %v (%v)\nSupported datastores: %v", scheme, err, datastores)
@@ -249,7 +260,10 @@ func start(c *cli.Context) error {
 		}
 
 		// Start CSI Server for this driver
-		csisock := fmt.Sprintf("/var/lib/osd/driver/%s-csi.sock", d)
+		csisock := os.Getenv("CSI_ENDPOINT")
+		if len(csisock) == 0 {
+			csisock = fmt.Sprintf("/var/lib/osd/driver/%s-csi.sock", d)
+		}
 		os.Remove(csisock)
 		cm, err := clustermanager.Inst()
 		if err != nil {
