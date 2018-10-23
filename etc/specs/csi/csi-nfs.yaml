@@ -1,6 +1,96 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  name: csi-registrar
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: external-registrar-runner
+rules:
+  - apiGroups: ["csi.storage.k8s.io"]
+    resources: ["csidrivers"]
+    verbs: ["get", "list", "watch", "update", "create", "delete"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "create", "update", "delete"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-registrar-role
+subjects:
+  - kind: ServiceAccount
+    name: csi-registrar
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: external-registrar-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-provisioner
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: external-provisioner-runner
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["list", "watch", "create", "update", "get"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["get", "list"]
+  - apiGroups: ["csi.storage.k8s.io"]
+    resources: ["csinodeinfos"]
+    verbs: ["get", "list", "watch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-provisioner-role
+subjects:
+  - kind: ServiceAccount
+    name: csi-provisioner
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: external-provisioner-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
   name: csi-nodeplugin
 
 ---
@@ -22,14 +112,11 @@ rules:
     resources: ["volumeattachments"]
     verbs: ["get", "list", "watch", "update"]
   - apiGroups: ["csi.storage.k8s.io"]
-    resources: ["csidrivers", "csidrivers"]
-    verbs: ["get", "list", "watch", "update", "create", "delete"]
+    resources: ["csidrivers"]
+    verbs: ["get", "list", "watch", "update"]
   - apiGroups: ["csi.storage.k8s.io"]
     resources: ["csinodeinfos"]
     verbs: ["get", "list", "watch", "update"]
-  - apiGroups: ["apiextensions.k8s.io"]
-    resources: ["customresourcedefinitions"]
-    verbs: ["*"]
 
 ---
 kind: ClusterRoleBinding
@@ -44,6 +131,59 @@ roleRef:
   kind: ClusterRole
   name: csi-nodeplugin
   apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-attacher
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: external-attacher-runner
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-attacher-role
+subjects:
+  - kind: ServiceAccount
+    name: csi-attacher
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: external-attacher-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-nfs-provisioner
+  labels:
+    app: csi-nfs-provisioner
+spec:
+  selector:
+    app: csi-nfs-provisioner
+  ports:
+    - name: dummy
+      port: 12345
 
 ---
 kind: StatefulSet
@@ -61,7 +201,97 @@ spec:
       labels:
         app: csi-nfs-provisioner
     spec:
-      serviceAccount: csi-nodeplugin
+      serviceAccount: csi-provisioner
+      containers:
+        - name: csi-provisioner
+          image: quay.io/k8scsi/csi-provisioner:v0.4.1
+          args:
+            - --v=5
+            - --provisioner=com.openstorage.nfs
+            - "--csi-address=$(ADDRESS)"
+            - "--connection-timeout=30s"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+      volumes:
+        - hostPath:
+            path: /var/lib/kubelet/plugins/csi-nfs
+            type: DirectoryOrCreate
+          name: socket-dir
+
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-registrar
+spec:
+  serviceName: "csi-registrar"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-registrar
+  template:
+    metadata:
+      labels:
+        app: csi-registrar
+    spec:
+      serviceAccount: csi-registrar
+      containers:
+        - name: csi-registrar
+          image: quay.io/k8scsi/driver-registrar:v0.4.1
+          args:
+            - --v=5
+            - --mode=kubernetes-register
+            - --driver-requires-attachment=true
+            - --csi-address=/csi/csi.sock
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+      volumes:
+        - hostPath:
+            path: /var/lib/kubelet/plugins/csi-nfs
+            type: DirectoryOrCreate
+          name: socket-dir
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-nfs-attacher
+  labels:
+    app: csi-nfs-attacher
+spec:
+  selector:
+    app: csi-nfs-attacher
+  ports:
+    - name: dummy
+      port: 12345
+
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-nfs-attacher
+spec:
+  serviceName: "csi-nfs-attacher"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-nfs-attacher
+  template:
+    metadata:
+      labels:
+        app: csi-nfs-attacher
+    spec:
+      serviceAccount: csi-attacher
       containers:
         - name: csi-attacher
           image: quay.io/k8scsi/csi-attacher:v0.4.1
@@ -71,37 +301,6 @@ spec:
           env:
             - name: ADDRESS
               value: /csi/csi.sock
-          imagePullPolicy: Always
-          volumeMounts:
-          - mountPath: /csi
-            name: socket-dir
-        - name: csi-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v0.4.1
-          args:
-            - "--provisioner=csi-nfs"
-            - "--csi-address=$(ADDRESS)"
-            - "--connection-timeout=15s"
-          env:
-            - name: ADDRESS
-              value: /csi/csi.sock
-          imagePullPolicy: Always
-          volumeMounts:
-            - mountPath: /csi
-              name: socket-dir
-        - name: driver-registrar-kube
-          image: quay.io/k8scsi/driver-registrar:v0.4.1
-          args:
-            - --v=5
-            - --mode=kubernetes-register
-            - --driver-requires-attachment=false
-            - --pod-info-mount-version=v1
-            - --csi-address=/csi/csi.sock
-          env:
-            - name: KUBE_NODE_NAME
-              valueFrom:
-                fieldRef:
-                  apiVersion: v1
-                  fieldPath: spec.nodeName
           imagePullPolicy: Always
           volumeMounts:
           - mountPath: /csi
