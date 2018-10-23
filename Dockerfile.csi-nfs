@@ -2,7 +2,7 @@ FROM alpine
 MAINTAINER luis@portworx.com
 
 EXPOSE 9100 9110
-ADD ./etc/config/config-fake.yaml /config-fake.yaml
+ADD ./config-nfs.yaml /config.yaml
 ADD ./bin/osd /
 ENTRYPOINT ["/osd"]
-CMD ["-d", "-f", "/config-fake.yaml"]
+CMD ["-d", "-f", "/config.yaml"]
