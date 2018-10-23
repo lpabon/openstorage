@@ -1,0 +1,14 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-xfs
+provisioner: com.openstorage.nfs
+parameters:
+    fs: xfs
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-block
+provisioner: com.openstorage.nfs

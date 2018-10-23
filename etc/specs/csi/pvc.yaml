@@ -1,0 +1,38 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-1g
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-xfs
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-shared
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-xfs
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-block
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Block
+  storageClassName: nfs-block
+  resources:
+    requests:
+      storage: 1Gi
