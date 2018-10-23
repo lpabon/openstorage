@@ -199,16 +199,19 @@ generate: docs generate-mockfiles
 
 sdk: docker-proto docker-build-mock-sdk-server
 
-docker-build-mock-sdk-server: packr
-	rm -rf _tmp
-	mkdir -p _tmp
+osd: packr
+	mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux go build \
 				-a -ldflags '-extldflags "-static"' \
 				-tags "$(TAGS)" \
-				-o ./_tmp/osd \
+				-o ./bin/osd \
 				./cmd/osd
+
+docker-build-mock-sdk-server: osd
 	docker build -t $(IMAGE_MOCKSDKSERVER) -f Dockerfile.sdk .
-	rm -rf _tmp
+
+docker-build-csi-nfs: osd
+	docker build -t openstorage/csi-nfs -f Dockerfile.csi-nfs .
 
 docker-build-osd-dev-base:
 	docker build -t quay.io/openstorage/osd-dev-base -f Dockerfile.osd-dev-base .
