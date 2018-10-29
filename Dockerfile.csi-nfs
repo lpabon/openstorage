@@ -4,6 +4,6 @@ MAINTAINER luis@portworx.com
 EXPOSE 9100 9110
 ADD ./config-nfs.yaml /config.yaml
 ADD ./bin/osd /
-RUN apk add xfsprogs e2fsprogs btrfs-progs
+RUN apk update && apk add xfsprogs e2fsprogs btrfs-progs
 ENTRYPOINT ["/osd"]
 CMD ["-d", "-f", "/config.yaml"]

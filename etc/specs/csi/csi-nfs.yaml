@@ -365,10 +365,17 @@ spec:
           volumeMounts:
             - mountPath: /csi
               name: socket-dir
+            - mountPath: /var/lib/openstorage
+              mountPropagation: Bidirectional
+              name: openstorage-dir
             - mountPath: /var/lib/kubelet/pods
               mountPropagation: Bidirectional
               name: mountpoint-dir
       volumes:
+        - hostPath:
+            path: /var/lib/openstorage
+            type: DirectoryOrCreate
+          name: openstorage-dir
         - hostPath:
             path: /var/lib/kubelet/plugins/csi-nfs
             type: DirectoryOrCreate
