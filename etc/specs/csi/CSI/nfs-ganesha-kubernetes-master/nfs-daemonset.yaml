@@ -1,0 +1,127 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: nfs-server
+spec:
+  ports:
+    - name: nfs
+      port: 2049
+    - name: mountd
+      port: 20048
+    - name: rpcbind
+      port: 111
+  selector:
+    nfs-ganesha-node: daemonset
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    description: nfs-ganesha Daemon Set
+    tags: nfs-ganesha
+  labels:
+    nfs-ganesha: deployment
+  name: nfs-ganesha
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        nfs-ganesha-node: daemonset
+      name: nfs-ganesha
+    spec:
+      containers:
+      - image: quay.io/luis_pabon0/ganesha
+        imagePullPolicy: IfNotPresent
+        name: nfs-ganesha
+        ports:
+        - containerPort: 2049
+          name: nfs
+        - containerPort: 20048
+          name: mountd
+        - containerPort: 111
+          name: rpcbind
+        securityContext:
+          capabilities: {}
+          privileged: true
+        volumeMounts:
+        - mountPath: /exports
+          name: nfs-ganesha-exports
+      nodeSelector:
+        storagenode: csi-nfs-data
+      volumes:
+      - hostPath:
+          path: /var/lib/nfs-ganesha/exports
+        name: nfs-ganesha-exports
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd-client
+spec:
+  ports:
+  - name: etcd-client-port
+    port: 2379
+    protocol: TCP
+    targetPort: 2379
+  selector:
+    app: etcd
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    etcd_node: etcd0
+  name: etcd0
+spec:
+  ports:
+  - name: client
+    port: 2379
+    protocol: TCP
+    targetPort: 2379
+  - name: server
+    port: 2380
+    protocol: TCP
+    targetPort: 2380
+  selector:
+    etcd_node: etcd0
+
+---
+apiVersion: app/v1
+kind: Pod
+metadata:
+  labels:
+    app: etcd
+    etcd_node: etcd0
+  name: etcd0
+spec:
+  containers:
+  - command:
+    - /usr/local/bin/etcd
+    - --name
+    - etcd0
+    - --initial-advertise-peer-urls
+    - http://etcd0:2380
+    - --listen-peer-urls
+    - http://0.0.0.0:2380
+    - --listen-client-urls
+    - http://0.0.0.0:2379
+    - --advertise-client-urls
+    - http://etcd0:2379
+    - --initial-cluster
+    - etcd0=http://etcd0:2380
+    - --initial-cluster-state
+    - new
+    image: quay.io/coreos/etcd:latest
+    name: etcd0
+    ports:
+    - containerPort: 2379
+      name: client
+      protocol: TCP
+    - containerPort: 2380
+      name: server
+      protocol: TCP
+  restartPolicy: Always

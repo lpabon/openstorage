@@ -1,0 +1,519 @@
+kind : Service
+apiVersion: v1
+metadata:
+  name: nfs-server
+spec:
+  ports:
+    - name: nfs
+      port: 2049
+    - name: mountd
+      port: 20048
+    - name: rpcbind
+      port: 111
+  selector:
+    nfs-ganesha-node: daemonset
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    description: nfs-ganesha Daemon Set
+    tags: nfs-ganesha
+  labels:
+    nfs-ganesha: deployment
+  name: nfs-ganesha
+spec:
+  nodeSelector:
+    storagenode: csi-nfs-data
+  containers:
+    - image: quay.io/luis_pabon0/ganesha
+      imagePullPolicy: IfNotPresent
+      name: nfs-ganesha
+      ports:
+        - containerPort: 2049
+          name: nfs
+        - containerPort: 20048
+          name: mountd
+        - containerPort: 111
+          name: rpcbind
+      securityContext:
+        capabilities: {}
+        privileged: true
+      volumeMounts:
+        - mountPath: /exports
+          name: nfs-ganesha-exports
+  volumes:
+    - hostPath:
+        path: /var/lib/nfs-ganesha/exports
+      name: nfs-ganesha-exports
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd-client
+spec:
+  ports:
+  - name: etcd-client-port
+    port: 2379
+    protocol: TCP
+    targetPort: 2379
+  selector:
+    app: etcd
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    etcd_node: etcd0
+  name: etcd0
+spec:
+  ports:
+  - name: client
+    port: 2379
+    protocol: TCP
+    targetPort: 2379
+  - name: server
+    port: 2380
+    protocol: TCP
+    targetPort: 2380
+  selector:
+    etcd_node: etcd0
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: etcd
+    etcd_node: etcd0
+  name: etcd0
+spec:
+  nodeSelector:
+    storagenode: csi-nfs-data
+  containers:
+  - command:
+    - /usr/local/bin/etcd
+    - --name
+    - etcd0
+    - --initial-advertise-peer-urls
+    - http://etcd0:2380
+    - --listen-peer-urls
+    - http://0.0.0.0:2380
+    - --listen-client-urls
+    - http://0.0.0.0:2379
+    - --advertise-client-urls
+    - http://etcd0:2379
+    - --initial-cluster
+    - etcd0=http://etcd0:2380
+    - --initial-cluster-state
+    - new
+    image: quay.io/coreos/etcd:latest
+    name: etcd0
+    ports:
+    - containerPort: 2379
+      name: client
+      protocol: TCP
+    - containerPort: 2380
+      name: server
+      protocol: TCP
+  restartPolicy: Always
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-registrar
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: external-registrar-runner
+rules:
+  - apiGroups: ["csi.storage.k8s.io"]
+    resources: ["csidrivers"]
+    verbs: ["get", "list", "watch", "update", "create", "delete"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "create", "update", "delete"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-registrar-role
+subjects:
+  - kind: ServiceAccount
+    name: csi-registrar
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: external-registrar-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-provisioner
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: external-provisioner-runner
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["list", "watch", "create", "update", "get"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["get", "list"]
+  - apiGroups: ["csi.storage.k8s.io"]
+    resources: ["csinodeinfos"]
+    verbs: ["get", "list", "watch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-provisioner-role
+subjects:
+  - kind: ServiceAccount
+    name: csi-provisioner
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: external-provisioner-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-nodeplugin
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-nodeplugin
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "update"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["csi.storage.k8s.io"]
+    resources: ["csidrivers"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["csi.storage.k8s.io"]
+    resources: ["csinodeinfos"]
+    verbs: ["get", "list", "watch", "update"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-nodeplugin
+subjects:
+  - kind: ServiceAccount
+    name: csi-nodeplugin
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: csi-nodeplugin
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-attacher
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: external-attacher-runner
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-attacher-role
+subjects:
+  - kind: ServiceAccount
+    name: csi-attacher
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: external-attacher-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-nfs-provisioner
+  labels:
+    app: csi-nfs-provisioner
+spec:
+  selector:
+    app: csi-nfs-provisioner
+  ports:
+    - name: dummy
+      port: 12345
+
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-nfs-provisioner
+spec:
+  serviceName: "csi-nfs-provisioner"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-nfs-provisioner
+  template:
+    metadata:
+      labels:
+        app: csi-nfs-provisioner
+    spec:
+      serviceAccount: csi-provisioner
+      containers:
+        - name: csi-provisioner
+          image: quay.io/k8scsi/csi-provisioner:v0.4.1
+          args:
+            - --v=5
+            - --provisioner=com.openstorage.nfs
+            - "--csi-address=$(ADDRESS)"
+            - "--connection-timeout=30s"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+      volumes:
+        - hostPath:
+            path: /var/lib/kubelet/plugins/csi-nfs
+            type: DirectoryOrCreate
+          name: socket-dir
+
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-registrar
+spec:
+  serviceName: "csi-registrar"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-registrar
+  template:
+    metadata:
+      labels:
+        app: csi-registrar
+    spec:
+      serviceAccount: csi-registrar
+      containers:
+        - name: csi-registrar
+          image: quay.io/k8scsi/driver-registrar:v0.4.1
+          args:
+            - --v=5
+            - --mode=kubernetes-register
+            - --driver-requires-attachment=true
+            - --csi-address=/csi/csi.sock
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+      volumes:
+        - hostPath:
+            path: /var/lib/kubelet/plugins/csi-nfs
+            type: DirectoryOrCreate
+          name: socket-dir
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-nfs-attacher
+  labels:
+    app: csi-nfs-attacher
+spec:
+  selector:
+    app: csi-nfs-attacher
+  ports:
+    - name: dummy
+      port: 12345
+
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-nfs-attacher
+spec:
+  serviceName: "csi-nfs-attacher"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-nfs-attacher
+  template:
+    metadata:
+      labels:
+        app: csi-nfs-attacher
+    spec:
+      serviceAccount: csi-attacher
+      containers:
+        - name: csi-attacher
+          image: quay.io/k8scsi/csi-attacher:v0.4.1
+          args:
+            - --v=5
+            - --csi-address=$(ADDRESS)
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: Always
+          volumeMounts:
+          - mountPath: /csi
+            name: socket-dir
+      volumes:
+        - hostPath:
+            path: /var/lib/kubelet/plugins/csi-nfs
+            type: DirectoryOrCreate
+          name: socket-dir
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: csi-nfsplugin
+spec:
+  selector:
+    matchLabels:
+      app: csi-nfsplugin
+  template:
+    metadata:
+      labels:
+        app: csi-nfsplugin
+    spec:
+      serviceAccount: csi-nodeplugin
+      containers:
+        - name: driver-registrar-node
+          image: quay.io/k8scsi/driver-registrar:v0.4.1
+          args:
+            - --v=5
+            - --csi-address=/csi/csi.sock
+          env:
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+          imagePullPolicy: Always
+          volumeMounts:
+          - mountPath: /csi
+            name: socket-dir
+          - mountPath: /registration
+            name: registration-dir
+        - name: csi-nfs
+          image: quay.io/openstorage/csi-nfs
+          args:
+            - "-d"
+            - "--kvdb=etcd-kv://etcd-client:2379"
+            - "--file=/config/config.yaml"
+            - "--nodeid=$(KUBE_NODE_NAME)"
+          env:
+            - name: CSI_ENDPOINT
+              value: /csi/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+            - mountPath: /var/lib/openstorage
+              mountPropagation: Bidirectional
+              name: openstorage-dir
+            - mountPath: /var/lib/kubelet/pods
+              mountPropagation: Bidirectional
+              name: mountpoint-dir
+            - mountPath: /config
+              name: config-dir
+      volumes:
+        - hostPath:
+            path: /tmp/config
+          name: config-dir
+        - hostPath:
+            path: /var/lib/openstorage
+            type: DirectoryOrCreate
+          name: openstorage-dir
+        - hostPath:
+            path: /var/lib/kubelet/plugins/csi-nfs
+            type: DirectoryOrCreate
+          name: socket-dir
+        - hostPath:
+            path: /var/lib/kubelet/pods
+            type: DirectoryOrCreate
+          name: mountpoint-dir
+        - hostPath:
+            path: /var/lib/kubelet/plugins
+            type: Directory
+          name: registration-dir

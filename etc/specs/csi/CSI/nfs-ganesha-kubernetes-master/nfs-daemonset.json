@@ -1,0 +1,68 @@
+{
+  "kind": "DaemonSet",
+  "apiVersion": "extensions/v1beta1",
+  "metadata": {
+    "name": "nfs-ganesha",
+    "labels": {
+      "nfs-ganesha": "deployment"
+    },
+    "annotations": {
+      "description": "nfs-ganesha Daemon Set",
+      "tags": "nfs-ganesha"
+    }
+  },
+  "spec": {
+    "template": {
+      "metadata": {
+        "name": "nfs-ganesha",
+        "labels": {
+          "nfs-ganesha-node": "daemonset"
+        }
+      },
+      "spec": {
+        "nodeSelector": {
+          "storagenode": "nfs-ganesha"
+        },
+        "containers": [
+          {
+            "image": "quay.io/luis_pabon0/ganesha",
+            "ports" : [
+                {
+                    "name": "nfs",
+                    "containerPort": 2049
+                },
+                {
+                    "name": "mountd",
+                    "containerPort": 20048
+                },
+                {
+                    "name": "rpcbind",
+                    "containerPort": 111
+                }
+            ],
+            "imagePullPolicy": "IfNotPresent",
+            "name": "nfs-ganesha",
+            "volumeMounts": [
+              {
+                "name": "nfs-ganesha-exports",
+                "mountPath": "/exports"
+              }
+            ],
+            "securityContext": {
+              "capabilities": {},
+              "privileged": true
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "name": "nfs-ganesha-exports",
+            "hostPath": {
+              "path": "/exports"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
