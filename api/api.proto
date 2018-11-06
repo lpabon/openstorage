@@ -330,6 +330,8 @@ message VolumeSpec {
   IoStrategy io_strategy = 30;
   // PlacementStrategy specifies a spec to indicate where to place the volume.
   VolumePlacementStrategy placement_strategy = 31;
+  // Owner
+  Ownership ownership = 32;
 }
 
 // VolumeSpecUpdate provides a method to set any of the VolumeSpec of an existing volume
@@ -368,6 +370,8 @@ message VolumeSpecUpdate {
   oneof sharedv4_opt { bool sharedv4 = 24; }
   // QueueDepth defines the desired block device queue depth
   oneof queue_depth_opt { uint32 queue_depth = 25; }
+  // Ownership
+  oneof ownsership_opt { Ownership ownership = 26; }
 }
 
 // ReplicaSet set of machine IDs (nodes) to which part of this volume is erasure
@@ -382,6 +386,24 @@ message ReplicaSet {
 // swagger:model
 message RuntimeStateMap {
   map<string, string> runtime_state = 1;
+}
+
+message OwnsershipGroup {
+  string name = 1;
+  repeated string accounts = 2;
+}
+
+message Ownership {
+  enum AccessType {
+    Denied = 0;
+    Allowed = 1;
+    ReadOnly = 2;
+  }
+
+  string account = 1;
+  string group = 2;
+  AccessType group_access = 3;
+  AccessType world_access = 5;
 }
 
 // Volume represents an abstract storage volume.
@@ -588,6 +610,23 @@ message SdkAlertsDeleteRequest {
 
 // SdkAlertsDeleteResponse is empty.
 message SdkAlertsDeleteResponse {}
+
+/*
+service OpenStorageOwnership {
+  rpc Create(SdkOwnershipCreateRequest)
+    returns (SdkOwnershipCreateResponse) {
+      options(google.api.http) = {
+        post: "/v1/owerships"
+        body: "*"
+      };
+    }
+}
+
+message SdkOwnershipCreateRequest {
+  OwnershipGroup group = 1;
+}
+*/
+
 
 // OpenStorageAlerts defines rpc's for alerts.
 service OpenStorageAlerts {
