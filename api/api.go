@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	sdk_auth "github.com/libopenstorage/openstorage-sdk-auth/pkg/auth"
+
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/mohae/deepcopy"
@@ -935,4 +937,49 @@ func (r *CloudBackupHistoryResponse) ToSdkCloudBackupHistoryResponse() *SdkCloud
 	}
 
 	return resp
+}
+
+func (v *VolumeSpec) IsPermitted(account string, groups []string) bool {
+	return v.IsPermittedByClaims(&sdk_auth.Claims{
+		Name:   account,
+		Groups: groups,
+	})
+
+}
+
+func (v *VolumeSpec) IsPermittedByClaims(claims *sdk_auth.Claims) bool {
+	ownership := v.GetOwnership()
+
+	// If there is no ownership, then allow
+	if ownership == nil {
+		return true
+	}
+
+	// If it is set that anyone can access, then allow
+	if ownership.GetWorldAccess() == Ownership_Allowed {
+		return true
+	}
+
+	// If we were not passed any claims, we are not allowed
+	if claims == nil {
+		return false
+	}
+
+	// If this is the owner, then allow
+	if ownership.GetAccount() == claims.Name {
+		return true
+	}
+
+	// If groups are allowed, then check the groups
+	if ownership.GetGroupsAccess() == Ownership_Allowed {
+		for _, allowed_group := range ownership.GetGroups() {
+			for _, account_group := range claims.Groups {
+				if allowed_group == account_group {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }

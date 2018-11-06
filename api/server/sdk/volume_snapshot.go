@@ -41,6 +41,14 @@ func (s *VolumeServer) SnapshotCreate(
 		return nil, status.Error(codes.InvalidArgument, "Must supply a name")
 	}
 
+	// Checks ownership
+	_, err := s.Inspect(ctx, &api.SdkVolumeInspectRequest{
+		VolumeId: req.GetVolumeId(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	readonly := true
 	snapshotID, err := s.driver().Snapshot(req.GetVolumeId(), readonly, &api.VolumeLocator{
 		Name:         req.GetName(),
@@ -76,7 +84,15 @@ func (s *VolumeServer) SnapshotRestore(
 		return nil, status.Error(codes.InvalidArgument, "Must supply snapshot id")
 	}
 
-	err := s.driver().Restore(req.GetVolumeId(), req.GetSnapshotId())
+	// Checks ownership
+	_, err := s.Inspect(ctx, &api.SdkVolumeInspectRequest{
+		VolumeId: req.GetVolumeId(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.driver().Restore(req.GetVolumeId(), req.GetSnapshotId())
 	if err != nil {
 		if err == kvdb.ErrNotFound {
 			return nil, status.Errorf(

@@ -31,6 +31,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	podInfoName      = "csi.storage.k8s.io/pod.name"
+	podInfoNamespace = "csi.storage.k8s.io/pod.namespace"
+	podInfoUid       = "csi.storage.k8s.io/pod.uid"
+)
+
 func (s *OsdCsiServer) NodeGetInfo(
 	ctx context.Context,
 	req *csi.NodeGetInfoRequest,

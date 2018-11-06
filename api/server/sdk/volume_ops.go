@@ -28,6 +28,7 @@ import (
 )
 
 func (s *VolumeServer) create(
+	ctx context.Context,
 	locator *api.VolumeLocator,
 	source *api.Source,
 	spec *api.VolumeSpec,
@@ -60,6 +61,9 @@ func (s *VolumeServer) create(
 		return v.GetId(), nil
 	}
 
+	// Get account information
+	account, account_available := GetClaimsFromContext(ctx)
+
 	// Check if the caller is asking to create a snapshot or for a new volume
 	var id string
 	if len(source.GetParent()) != 0 {
@@ -70,6 +74,13 @@ func (s *VolumeServer) create(
 				codes.InvalidArgument,
 				"unable to get parent volume information: %s",
 				err.Error())
+		}
+
+		// Check if we are allowed access to the parent
+		if !parent.GetSpec().IsPermittedByClaims(account) {
+			return "", status.Errorf(
+				codes.PermissionDenied,
+				"Access denied to parent volume")
 		}
 
 		// Create a snapshot from the parent
@@ -83,6 +94,18 @@ func (s *VolumeServer) create(
 				err.Error())
 		}
 	} else {
+		// Attach ownership if available
+		if account_available {
+			if spec.Ownership == nil {
+				spec.Ownership = &api.Ownership{
+					Account: account.Name,
+				}
+			} else {
+				// Overwrite just the name to set the owner
+				spec.Ownership.Account = account.Name
+			}
+		}
+
 		// Create the volume
 		id, err = s.driver().Create(locator, source, spec)
 		if err != nil {
@@ -127,7 +150,7 @@ func (s *VolumeServer) Create(
 	}
 
 	// Create volume
-	id, err := s.create(locator, source, spec)
+	id, err := s.create(ctx, locator, source, spec)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -164,6 +187,7 @@ func (s *VolumeServer) Clone(
 	}
 
 	// Get spec. This also checks if the parend id exists.
+	// This checks for ownership
 	parentVol, err := s.Inspect(ctx, &api.SdkVolumeInspectRequest{
 		VolumeId: req.GetParentId(),
 	})
@@ -172,7 +196,7 @@ func (s *VolumeServer) Clone(
 	}
 
 	// Create the clone
-	id, err := s.create(locator, source, parentVol.GetVolume().GetSpec())
+	id, err := s.create(ctx, locator, source, parentVol.GetVolume().GetSpec())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -206,6 +230,16 @@ func (s *VolumeServer) Delete(
 			"Failed to determine if volume id %s exists: %v",
 			req.GetVolumeId(),
 			err.Error())
+	}
+
+	// Get account information
+	spec := volumes[0].GetSpec()
+
+	// Check if we are allowed access to the parent
+	if !isPermitted(spec, ctx) {
+		return nil, status.Errorf(
+			codes.PermissionDenied,
+			"Access denied to volume")
 	}
 
 	err = s.driver().Delete(req.GetVolumeId())
@@ -244,6 +278,13 @@ func (s *VolumeServer) Inspect(
 			codes.Internal,
 			"Failed to inspect volume %s: %v",
 			req.GetVolumeId(), err)
+	}
+
+	// Check if we are allowed access to the parent
+	if !isPermitted(vols[0].GetSpec(), ctx) {
+		return nil, status.Errorf(
+			codes.PermissionDenied,
+			"Access denied to volume")
 	}
 
 	return &api.SdkVolumeInspectResponse{
@@ -315,6 +356,7 @@ func (s *VolumeServer) Update(
 	}
 
 	// Get current state
+	// This will check for ownership also
 	resp, err := s.Inspect(ctx, &api.SdkVolumeInspectRequest{
 		VolumeId: req.GetVolumeId(),
 	})

@@ -18,9 +18,12 @@ limitations under the License.
 package sdk
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
+
+	sdk_auth "github.com/libopenstorage/openstorage-sdk-auth/pkg/auth"
 
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/pkg/sched"
@@ -238,4 +241,15 @@ func openLog(logfile string) (*os.File, error) {
 		return nil, fmt.Errorf("Unable to open logfile %s: %v", logfile, err)
 	}
 	return file, nil
+}
+
+// GetClaimsFromContext returns the claims stored in the context
+func GetClaimsFromContext(ctx context.Context) (*sdk_auth.Claims, bool) {
+	claims, ok := ctx.Value(InterceptorContextTokenKey).(*sdk_auth.Claims)
+	return claims, ok
+}
+
+func isPermitted(spec *api.VolumeSpec, ctx context.Context) bool {
+	claims, _ := GetClaimsFromContext(ctx)
+	return spec.IsPermittedByClaims(claims)
 }
