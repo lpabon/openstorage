@@ -31,6 +31,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	podInfoName      = "csi.storage.k8s.io/pod.name"
+	podInfoNamespace = "csi.storage.k8s.io/pod.namespace"
+	podInfoUid       = "csi.storage.k8s.io/pod.uid"
+)
+
 func (s *OsdCsiServer) NodeGetInfo(
 	ctx context.Context,
 	req *csi.NodeGetInfoRequest,
@@ -100,6 +106,15 @@ func (s *OsdCsiServer) NodePublishVolume(
 	if s.driver.Type() != api.DriverType_DRIVER_TYPE_BLOCK &&
 		req.GetVolumeCapability().GetBlock() != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Trying to attach as block a non block device")
+	}
+
+	// Check ownership
+	if v.GetSpec().GetOwnership() != nil &&
+		len(v.GetSpec().GetOwnership().GetAccount()) != 0 {
+		if req.GetVolumeAttributes()[podInfoNamespace] !=
+			v.GetSpec().GetOwnership().GetAccount() {
+			return nil, status.Errorf(codes.PermissionDenied, "Not owner of volume")
+		}
 	}
 
 	// Gather volume attributes
