@@ -38,6 +38,10 @@ const (
 	volumeCapabilityMessageReadOnlyVolume     = "Volume is read only"
 	volumeCapabilityMessageNotReadOnlyVolume  = "Volume is not read only"
 	defaultCSIVolumeSize                      = uint64(1024 * 1024 * 1024)
+
+	pvcInfoName      = "csi.storage.k8s.io/pvc.name"
+	pvcInfoNamespace = "csi.storage.k8s.io/pvc.namespace"
+	pvcInfoUid       = "csi.storage.k8s.io/pvc.uid"
 )
 
 // ControllerGetCapabilities is a CSI API functions which returns to the caller
@@ -395,6 +399,15 @@ func (s *OsdCsiServer) CreateVolume(
 			return nil, status.Error(codes.Internal, e)
 		}
 	} else {
+		// Get ownserhip
+		if namespace, ok := req.GetParameters()[pvcInfoNamespace]; ok {
+			spec.Ownership = &api.Ownership{
+				Account:     namespace,
+				GroupAccess: api.Ownership_Denied,
+				WorldAccess: api.Ownership_Denied,
+			}
+		}
+
 		// Get Capabilities and Size
 		spec.Shared = csiRequestsSharedVolume(req)
 
