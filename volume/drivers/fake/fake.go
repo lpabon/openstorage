@@ -444,7 +444,11 @@ func (d *driver) cloudBackupCreate(input *api.CloudBackupCreateRequest) (string,
 		return "", "", fmt.Errorf("Internal error. Volume has no specificiation")
 	}
 
-	taskId := uuid.New()
+	taskId := input.Name
+	if len(taskId) == 0 {
+		taskId = uuid.New()
+	}
+
 	// Save cloud backup
 	cloudId := uuid.New()
 	clusterInfo, err := d.thisCluster.Enumerate()
