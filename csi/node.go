@@ -19,6 +19,7 @@ package csi
 import (
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/pkg/options"
@@ -129,25 +130,30 @@ func (s *OsdCsiServer) NodePublishVolume(
 	}
 
 	if req.GetVolumeCapability().GetBlock() != nil {
-		// As block create a sym link to the attached location
-		err = os.Symlink(devicePath, req.GetTargetPath())
-		if err != nil {
-			detachErr := s.driver.Detach(v.GetId(), opts)
-			if detachErr != nil {
-				logrus.Errorf("Unable to detach volume %s: %s",
-					v.GetId(),
-					detachErr.Error())
-			}
+		// Check the file exists to bind mount
+		if err := verifyTargetLocationIsFile(req.GetTargetPath()); err != nil {
 			return nil, status.Errorf(
-				codes.Internal,
-				"Failed to create symlink %s -> %s: %v",
+				codes.Aborted,
+				"Failed to use target location %s: %s",
 				req.GetTargetPath(),
+				err.Error())
+		}
+
+		// Bindmount to location
+		if err := syscall.Mount(
+			devicePath,
+			req.GetTargetPath(),
+			"",
+			syscall.MS_BIND,
+			""); err != nil {
+			return nil, fmt.Errorf("Failed to setup block device %s on %s: %v",
 				devicePath,
+				req.GetTargetPath(),
 				err)
 		}
 	} else {
 		// Verify target location is an existing directory
-		if err := verifyTargetLocation(req.GetTargetPath()); err != nil {
+		if err := verifyTargetLocationIsDir(req.GetTargetPath()); err != nil {
 			return nil, status.Errorf(
 				codes.Aborted,
 				"Failed to use target location %s: %s",
@@ -207,31 +213,18 @@ func (s *OsdCsiServer) NodeUnpublishVolume(
 	// Get information about the target since the request does not
 	// tell us if it is for block or mount point.
 	// https://github.com/container-storage-interface/spec/issues/285
-	fileInfo, err := os.Lstat(req.GetTargetPath())
-	if err != nil && os.IsNotExist(err) {
-		// For idempotency, return that there is nothing to unmount
-		logrus.Infof("NodeUnpublishVolume on target path %s but it does "+
-			"not exist, returning there is nothing to do", req.GetTargetPath())
-		return &csi.NodeUnpublishVolumeResponse{}, nil
-	} else if err != nil {
-		return nil, status.Errorf(
-			codes.Internal,
-			"Unknown error while verifying target location %s: %s",
-			req.GetTargetPath(),
-			err.Error())
-	}
-
 	// Check if it is block or not
-	if fileInfo.Mode()&os.ModeSymlink != 0 {
-		// If block, we just need to remove the link.
-		os.Remove(req.GetTargetPath())
-	} else {
-		if !fileInfo.IsDir() {
+	if err := verifyTargetLocationIsFile(req.GetTargetPath()); err != nil {
+		// It is block, so let's unmount here
+		if err := syscall.Unmount(req.GetTargetPath(), 0); err != nil {
 			return nil, status.Errorf(
-				codes.NotFound,
-				"Target location %s is not a directory", req.GetTargetPath())
+				codes.Internal,
+				"Unable to unmount block volume %s from %s: %v",
+				req.GetVolumeId(),
+				req.GetTargetPath(),
+				err.Error())
 		}
-
+	} else if err := verifyTargetLocationIsDir(req.GetTargetPath()); err != nil {
 		// Mount volume onto the path
 		if err = s.driver.Unmount(req.GetVolumeId(), req.GetTargetPath(), nil); err != nil {
 			return nil, status.Errorf(
@@ -241,6 +234,11 @@ func (s *OsdCsiServer) NodeUnpublishVolume(
 				req.GetTargetPath(),
 				err.Error())
 		}
+	} else {
+		// For idempotency, return that there is nothing to unmount
+		logrus.Infof("NodeUnpublishVolume on target path %s but it does "+
+			"not exist, returning there is nothing to do", req.GetTargetPath())
+		return &csi.NodeUnpublishVolumeResponse{}, nil
 	}
 
 	if s.driver.Type() == api.DriverType_DRIVER_TYPE_BLOCK {
@@ -279,19 +277,43 @@ func (s *OsdCsiServer) NodeGetCapabilities(
 	}, nil
 }
 
-func verifyTargetLocation(targetPath string) error {
-	fileInfo, err := os.Lstat(targetPath)
-	if err != nil && os.IsNotExist(err) {
-		return fmt.Errorf("Target location %s does not exist", targetPath)
-	} else if err != nil {
-		return fmt.Errorf(
-			"Unknown error while verifying target location %s: %s",
-			targetPath,
-			err.Error())
+func verifyTargetLocationIsDir(targetPath string) error {
+	fileInfo, err := verifyTargetLocation(targetPath)
+	if err != nil {
+		return err
 	}
+
 	if !fileInfo.IsDir() {
 		return fmt.Errorf("Target location %s is not a directory", targetPath)
 	}
 
 	return nil
+}
+
+func verifyTargetLocationIsFile(targetPath string) error {
+	fileInfo, err := verifyTargetLocation(targetPath)
+	if err != nil {
+		return err
+	}
+	if fileInfo.IsDir() {
+		return fmt.Errorf("Target location %s is a directory", targetPath)
+	}
+	if fileInfo.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("Target location is a symlink and not a regular file", targetPath)
+	}
+
+	return nil
+}
+
+func verifyTargetLocation(targetPath string) (os.FileInfo, error) {
+	fileInfo, err := os.Lstat(targetPath)
+	if err != nil && os.IsNotExist(err) {
+		return nil, fmt.Errorf("Target location %s does not exist", targetPath)
+	} else if err != nil {
+		return nil, fmt.Errorf(
+			"Unknown error while verifying target location %s: %s",
+			targetPath,
+			err.Error())
+	}
+	return fileInfo, nil
 }
