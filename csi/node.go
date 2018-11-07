@@ -109,12 +109,8 @@ func (s *OsdCsiServer) NodePublishVolume(
 	}
 
 	// Check ownership
-	if v.GetSpec().GetOwnership() != nil &&
-		len(v.GetSpec().GetOwnership().GetAccount()) != 0 {
-		if req.GetVolumeAttributes()[podInfoNamespace] !=
-			v.GetSpec().GetOwnership().GetAccount() {
-			return nil, status.Errorf(codes.PermissionDenied, "Not owner of volume")
-		}
+	if !allowAccess(req.GetNodePublishSecrets(), v.GetSpec().GetOwnership()) {
+		return nil, status.Errorf(codes.PermissionDenied, "Access denied to volume %s", v.GetId())
 	}
 
 	// Gather volume attributes
@@ -309,4 +305,27 @@ func verifyTargetLocation(targetPath string) error {
 	}
 
 	return nil
+}
+
+// no group support yet
+func allowAccess(secrets map[string]string, ownership *api.Ownership) bool {
+	if ownership == nil {
+		return true
+	}
+
+	if ownership.GetWorldAccess() == api.Ownership_Allowed {
+		return true
+	}
+
+	if len(ownership.GetAccount()) == 0 {
+		return true
+	}
+
+	// Later decode token. for now it is a demo string
+	token := secrets["token"]
+	if token == ownership.GetAccount() {
+		return true
+	}
+
+	return false
 }

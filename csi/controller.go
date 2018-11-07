@@ -399,10 +399,13 @@ func (s *OsdCsiServer) CreateVolume(
 			return nil, status.Error(codes.Internal, e)
 		}
 	} else {
-		// Get ownserhip
-		if namespace, ok := req.GetParameters()[pvcInfoNamespace]; ok {
+		// Get credentials to save them
+		if len(req.GetControllerCreateSecrets()) != 0 {
+			secrets := req.GetControllerCreateSecrets()
+
+			// Get ownserhip
 			spec.Ownership = &api.Ownership{
-				Account:     namespace,
+				Account:     secrets["token"],
 				GroupAccess: api.Ownership_Denied,
 				WorldAccess: api.Ownership_Denied,
 			}
