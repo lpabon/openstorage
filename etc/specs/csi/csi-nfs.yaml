@@ -24,7 +24,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: csi-registrar
-    namespace: default
+    namespace: kube-system
 roleRef:
   kind: ClusterRole
   name: external-registrar-runner
@@ -81,7 +81,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: csi-provisioner
-    namespace: default
+    namespace: kube-system
 roleRef:
   kind: ClusterRole
   name: external-provisioner-runner
@@ -126,7 +126,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: csi-nodeplugin
-    namespace: default
+    namespace: kube-system
 roleRef:
   kind: ClusterRole
   name: csi-nodeplugin
@@ -165,7 +165,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: csi-attacher
-    namespace: default
+    namespace: kube-system
 roleRef:
   kind: ClusterRole
   name: external-attacher-runner
@@ -246,7 +246,7 @@ spec:
           args:
             - --v=5
             - --mode=kubernetes-register
-            - --driver-requires-attachment=true
+            - --driver-requires-attachment=false
             - --csi-address=/csi/csi.sock
           env:
             - name: ADDRESS
@@ -333,6 +333,7 @@ spec:
           args:
             - --v=5
             - --csi-address=/csi/csi.sock
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/csi-nfs/csi.sock
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
@@ -346,9 +347,10 @@ spec:
           - mountPath: /registration
             name: registration-dir
         - name: csi-nfs
-          image: quay.io/openstorage/csi-nfs
+          image: quay.io/openstorage/csi-nfs:owner
           args:
             - "-d"
+            - "--driver=name=nfs,server=192.168.1.126,path=/nas/rpi/work"
             - "--file=/config.yaml"
             - "--nodeid=$(KUBE_NODE_NAME)"
           env:
@@ -365,10 +367,17 @@ spec:
           volumeMounts:
             - mountPath: /csi
               name: socket-dir
+            - mountPath: /var/lib/openstorage
+              mountPropagation: Bidirectional
+              name: openstorage-dir
             - mountPath: /var/lib/kubelet/pods
               mountPropagation: Bidirectional
               name: mountpoint-dir
       volumes:
+        - hostPath:
+            path: /var/lib/openstorage
+            type: DirectoryOrCreate
+          name: openstorage-dir
         - hostPath:
             path: /var/lib/kubelet/plugins/csi-nfs
             type: DirectoryOrCreate
