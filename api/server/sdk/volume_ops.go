@@ -379,6 +379,13 @@ func (s *VolumeServer) mergeVolumeSpecs(vol *api.VolumeSpec, req *api.VolumeSpec
 		spec.Passphrase = vol.GetPassphrase()
 	}
 
+	// Ownership
+	if req.GetOwnsershipOpt() != nil {
+		spec.Ownership = req.GetOwnership()
+	} else {
+		spec.Ownership = vol.GetOwnership()
+	}
+
 	// Snapshot schedule as a string
 	if req.GetSnapshotScheduleOpt() != nil {
 		spec.SnapshotSchedule = req.GetSnapshotSchedule()
