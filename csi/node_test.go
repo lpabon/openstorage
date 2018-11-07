@@ -798,3 +798,56 @@ func TestNodeGetCapabilities(t *testing.T) {
 		csi.NodeServiceCapability_RPC_UNKNOWN,
 		r.GetCapabilities()[0].GetRpc().GetType())
 }
+
+func TestNodePublishVolumeAccessDenied(t *testing.T) {
+	// Create server and client connection
+	s := newTestServer(t)
+	defer s.Stop()
+
+	// Make a call
+	c := csi.NewNodeClient(s.Conn())
+
+	name := "myvol"
+	size := uint64(10)
+	targetPath := "/mnt"
+	gomock.InOrder(
+		s.MockDriver().
+			EXPECT().
+			Inspect([]string{name}).
+			Return([]*api.Volume{
+				&api.Volume{
+					Id: name,
+					Locator: &api.VolumeLocator{
+						Name: name,
+					},
+					Spec: &api.VolumeSpec{
+						Size: size,
+						Ownership: &api.Ownership{
+							Account: "myaccount",
+						},
+					},
+				},
+			}, nil).
+			Times(1),
+		s.MockDriver().
+			EXPECT().
+			Type().
+			Return(api.DriverType_DRIVER_TYPE_BLOCK).
+			Times(1),
+	)
+
+	req := &csi.NodePublishVolumeRequest{
+		VolumeId:   name,
+		TargetPath: targetPath,
+		VolumeCapability: &csi.VolumeCapability{
+			AccessMode: &csi.VolumeCapability_AccessMode{},
+		},
+	}
+
+	_, err := c.NodePublishVolume(context.Background(), req)
+	assert.NotNil(t, err)
+	serverError, ok := status.FromError(err)
+	assert.True(t, ok)
+	assert.Equal(t, serverError.Code(), codes.PermissionDenied)
+	assert.Contains(t, serverError.Message(), "denied")
+}
