@@ -2,7 +2,7 @@ FROM alpine
 MAINTAINER luis@portworx.com
 
 EXPOSE 9100 9110
-ADD ./config-nfs.yaml /config.yaml
+ADD ./etc/config/config.yaml /config.yaml
 ADD ./bin/osd /
 RUN apk add xfsprogs e2fsprogs btrfs-progs
 ENTRYPOINT ["/osd"]
