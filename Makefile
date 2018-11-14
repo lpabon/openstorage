@@ -84,8 +84,14 @@ vendor-without-update:
 
 vendor: vendor-update vendor-without-update
 
-build: packr
-	go build -tags "$(TAGS)" $(BUILDFLAGS) $(PKGS)
+osd:
+	CGO_ENABLED=0 GOOS=linux go build \
+				-a -ldflags '-extldflags "-static"' \
+				-tags "$(TAGS)" \
+				-o ./_tmp/osd \
+				./cmd/osd
+
+build: packr osd
 
 install: packr $(OSDSANITY)-install
 	go install -tags "$(TAGS)" $(PKGS)
@@ -337,7 +343,8 @@ clean: $(OSDSANITY)-clean
 	clean \
 	generate \
 	generate-mockfiles \
-	sdk-check-version
+	sdk-check-version \
+	osd
 
 $(GOPATH)/bin/cover:
 	go get golang.org/x/tools/cmd/cover

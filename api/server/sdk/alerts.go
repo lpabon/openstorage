@@ -35,7 +35,7 @@ import (
 // alertsServer pointer properly instantiated with a valid
 // alerts.filterDeleter.
 type alertsServer struct {
-	server *Server
+	server serverAccessor
 }
 
 func (s *alertsServer) alert() alerts.FilterDeleter {
@@ -45,7 +45,7 @@ func (s *alertsServer) alert() alerts.FilterDeleter {
 // NewAlertsServer provides an instance of alerts server interface.
 func NewAlertsServer(filterDeleter alerts.FilterDeleter) api.OpenStorageAlertsServer {
 	return &alertsServer{
-		server: &Server{alertHandler: filterDeleter},
+		server: &sdkGrpcServer{alertHandler: filterDeleter},
 	}
 }
 
