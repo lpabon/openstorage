@@ -339,10 +339,14 @@ func start(c *cli.Context) error {
 		csiServer.Start()
 
 		// Start SDK Server for this driver
+		sdksocket := fmt.Sprintf("/var/lib/osd/driver/%s-sdk.sock", d)
+		os.Remove(sdksocket)
+
 		sdkServer, err := sdk.New(&sdk.ServerConfig{
 			Net:        "tcp",
 			Address:    ":" + c.String("sdkport"),
 			RestPort:   c.String("sdkrestport"),
+			Socket:     sdksocket,
 			DriverName: d,
 			Cluster:    cm,
 			Auth:       setupAuth(),

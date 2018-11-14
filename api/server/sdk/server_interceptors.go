@@ -43,7 +43,8 @@ var (
 	defaultRoles = map[string][]sdk_auth.Rule{
 		"admin": {
 			{
-				Allow: []string{"all"},
+				Services: []string{"*"},
+				Apis:     []string{"*"},
 			},
 		},
 	}
@@ -159,26 +160,35 @@ func (s *sdkGrpcServer) authorizationServerInterceptor(
 
 func authorizeClaims(rules []sdk_auth.Rule, fullmethod string) error {
 
-	// String: "/<service>/<method>"
+	var (
+		reqService, reqApi string
+	)
+
+	// String: "/openstorage.api.OpenStorage<service>/<method>"
 	parts := strings.Split(fullmethod, "/")
-	service := parts[1]
+
+	if len(parts) > 1 {
+		reqService = strings.TrimPrefix(strings.ToLower(parts[1]), "openstorage.api.openstorage")
+	}
+
+	if len(parts) > 2 {
+		reqApi = strings.ToLower(parts[2])
+	}
 
 	// Go through each rule until a match is found
 	for _, rule := range rules {
-		for _, deny := range rule.Deny {
-			if deny == "all" ||
-				fullmethod == deny ||
-				service == deny {
-				return fmt.Errorf("access denied")
-			}
-		}
-		for _, allowed := range rule.Allow {
-			if allowed == "all" ||
-				fullmethod == allowed ||
-				service == allowed {
-				return nil
+		for _, service := range rule.Services {
+			if service == "*" ||
+				service == reqService {
+				for _, api := range rule.Apis {
+					if api == "*" ||
+						api == reqApi {
+						return nil
+					}
+				}
 			}
 		}
 	}
+
 	return fmt.Errorf("no accessable rule to authorize access found")
 }

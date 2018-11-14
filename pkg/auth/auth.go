@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	requiredClaims = []string{"exp", "iat", "name", "email", "role"}
+	requiredClaims = []string{"exp", "iat", "name", "email"}
 )
 
 type Authenticator interface {
