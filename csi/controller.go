@@ -405,9 +405,7 @@ func (s *OsdCsiServer) CreateVolume(
 
 			// Get ownserhip
 			spec.Ownership = &api.Ownership{
-				Account:     secrets["token"],
-				GroupAccess: api.Ownership_Denied,
-				WorldAccess: api.Ownership_Denied,
+				Account: secrets["token"],
 			}
 		}
 

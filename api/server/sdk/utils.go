@@ -18,7 +18,10 @@ limitations under the License.
 package sdk
 
 import (
+	"context"
 	"time"
+
+	sdk_auth "github.com/libopenstorage/openstorage-sdk-auth/pkg/auth"
 
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/pkg/sched"
@@ -232,5 +235,11 @@ func retainInternalSpecYamlByteToSdkSched(
 
 // GetClaimsFromContext returns the claims stored in the context
 func GetClaimsFromContext(ctx context.Context) (*sdk_auth.Claims, bool) {
-	return ctx.Value(InterceptorContextTokenKey).(*sdk_auth.Claims)
+	claims, ok := ctx.Value(InterceptorContextTokenKey).(*sdk_auth.Claims)
+	return claims, ok
+}
+
+func isPermitted(spec *api.VolumeSpec, ctx context.Context) bool {
+	claims, _ := GetClaimsFromContext(ctx)
+	return spec.IsPermittedByClaims(claims)
 }
