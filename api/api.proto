@@ -390,11 +390,6 @@ message RuntimeStateMap {
   map<string, string> runtime_state = 1;
 }
 
-message OwnsershipGroup {
-  string name = 1;
-  repeated string accounts = 2;
-}
-
 message Ownership {
   enum AccessType {
     Denied = 0;
@@ -403,9 +398,9 @@ message Ownership {
   }
 
   string account = 1;
-  string group = 2;
-  AccessType group_access = 3;
-  AccessType world_access = 5;
+  repeated string groups = 2;
+  AccessType groups_access = 3;
+  AccessType world_access = 4;
 }
 
 // Volume represents an abstract storage volume.

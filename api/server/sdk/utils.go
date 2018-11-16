@@ -229,3 +229,8 @@ func retainInternalSpecYamlByteToSdkSched(
 	}
 	return scheds, nil
 }
+
+// GetClaimsFromContext returns the claims stored in the context
+func GetClaimsFromContext(ctx context.Context) (*sdk_auth.Claims, bool) {
+	return ctx.Value(InterceptorContextTokenKey).(*sdk_auth.Claims)
+}

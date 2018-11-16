@@ -28,6 +28,7 @@ import (
 )
 
 func (s *VolumeServer) create(
+	ctx context.Context,
 	locator *api.VolumeLocator,
 	source *api.Source,
 	spec *api.VolumeSpec,
@@ -60,9 +61,13 @@ func (s *VolumeServer) create(
 		return v.GetId(), nil
 	}
 
+	// Get account information
+	account, account_available := GetClaimsFromContext(ctx)
+
 	// Check if the caller is asking to create a snapshot or for a new volume
 	var id string
 	if len(source.GetParent()) != 0 {
+
 		// Get parent volume information
 		parent, err := util.VolumeFromName(s.driver(), source.Parent)
 		if err != nil {
@@ -70,6 +75,13 @@ func (s *VolumeServer) create(
 				codes.InvalidArgument,
 				"unable to get parent volume information: %s",
 				err.Error())
+		}
+
+		// Check if we are allowed access to the parent
+		if !parent.IsPermittedByClaims(account) {
+			return "", status.Errorf(
+				codes.PermissionDenied,
+				"Access denied to parent volume")
 		}
 
 		// Create a snapshot from the parent
@@ -83,6 +95,16 @@ func (s *VolumeServer) create(
 				err.Error())
 		}
 	} else {
+		// Attach ownership if available
+		if account_available {
+			// XXX check for passing in
+			spec.Ownership = &api.Ownership{
+				Account:     account.Name,
+				GroupAccess: api.Ownership_Denied,
+				WorldAccess: api.Ownership_Denied,
+			}
+		}
+
 		// Create the volume
 		id, err = s.driver().Create(locator, source, spec)
 		if err != nil {
@@ -121,7 +143,7 @@ func (s *VolumeServer) Create(
 	}
 	source := &api.Source{}
 
-	id, err := s.create(locator, source, spec)
+	id, err := s.create(ctx, locator, source, spec)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -157,12 +179,22 @@ func (s *VolumeServer) Clone(
 		Parent: req.GetParentId(),
 	}
 
+	// Get account information
+	account, _ := GetClaimsFromContext(ctx)
+
 	// Get spec. This also checks if the parend id exists.
 	parentVol, err := s.Inspect(ctx, &api.SdkVolumeInspectRequest{
 		VolumeId: req.GetParentId(),
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if we are allowed access to the parent
+	if !parentVol.IsPermittedByClaims(account) {
+		return "", status.Errorf(
+			codes.PermissionDenied,
+			"Access denied to parent volume")
 	}
 
 	// Create the clone
@@ -200,6 +232,17 @@ func (s *VolumeServer) Delete(
 			"Failed to determine if volume id %s exists: %v",
 			req.GetVolumeId(),
 			err.Error())
+	}
+
+	// Get account information
+	spec := volumes[0].GetSpec()
+	account, _ := GetClaimsFromContext(ctx)
+
+	// Check if we are allowed access to the parent
+	if !parent.IsPermittedByClaims(account) {
+		return "", status.Errorf(
+			codes.PermissionDenied,
+			"Access denied to parent volume")
 	}
 
 	err = s.driver().Delete(req.GetVolumeId())
