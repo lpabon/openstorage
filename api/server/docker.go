@@ -8,6 +8,11 @@ import (
 	"os"
 	"path"
 
+	"context"
+	"github.com/libopenstorage/openstorage/pkg/grpcserver"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/api/spec"
 	"github.com/libopenstorage/openstorage/config"
@@ -26,6 +31,9 @@ const (
 type driver struct {
 	restBase
 	spec.SpecHandler
+
+	sdkUds string
+	conn   *grpc.ClientConn
 }
 
 type handshakeResp struct {
@@ -64,8 +72,13 @@ type capabilitiesResponse struct {
 	Capabilities capabilities
 }
 
-func newVolumePlugin(name string) restServer {
-	return &driver{restBase{name: name, version: "0.3"}, spec.NewSpecHandler()}
+func newVolumePlugin(name, sdkUds string) restServer {
+	d := &driver{
+		restBase:    restBase{name: name, version: "0.3"},
+		SpecHandler: spec.NewSpecHandler(),
+		sdkUds:      sdkUds,
+	}
+	return d
 }
 
 func (d *driver) String() string {
@@ -169,6 +182,20 @@ func (d *driver) mountpath(name string) string {
 	return path.Join(volume.MountBase, name)
 }
 
+func (d *driver) getConn() (*grpc.ClientConn, error) {
+
+	if d.conn == nil {
+		var err error
+		d.conn, err = grpcserver.Connect(
+			d.sdkUds,
+			[]grpc.DialOption{grpc.WithInsecure()})
+		if err != nil {
+			return nil, fmt.Errorf("Failed to connect to gRPC handler: %v", err)
+		}
+	}
+	return d.conn, nil
+}
+
 func (d *driver) create(w http.ResponseWriter, r *http.Request) {
 	method := "create"
 	request, err := d.decode(method, w, r)
@@ -178,47 +205,95 @@ func (d *driver) create(w http.ResponseWriter, r *http.Request) {
 
 	specParsed, spec, locator, source, name := d.SpecFromString(request.Name)
 	d.logRequest(method, name).Infoln("")
-	// If we fail to find the volume, create it.
-	if _, err = d.volFromName(name); err != nil {
-		v, err := volumedrivers.Get(d.name)
+
+	if !specParsed {
+		spec, locator, source, err = d.SpecFromOpts(request.Opts)
 		if err != nil {
 			d.errorResponse(method, w, err)
 			return
 		}
-		if !specParsed {
-			spec, locator, source, err = d.SpecFromOpts(request.Opts)
-			if err != nil {
-				d.errorResponse(method, w, err)
-				return
-			}
-		}
-		if locator == nil {
-			locator = &api.VolumeLocator{}
-		}
-		locator.Name = name
-		if source != nil && len(source.Parent) != 0 {
-			vol, err := d.volFromName(source.Parent)
-			if err != nil {
-				d.errorResponse(method, w, err)
-				return
-			}
-			if _, err = v.Snapshot(vol.Id,
-				false,
-				&api.VolumeLocator{Name: name},
-				false,
-			); err != nil {
-				d.errorResponse(method, w, err)
-				return
-			}
-		} else if _, err := v.Create(
-			locator,
-			nil,
-			spec,
-		); err != nil && err != volume.ErrExist {
-			d.errorResponse(method, w, err)
-			return
-		}
 	}
+
+	// Get the token and place it in the context
+	token, tokenInName := d.GetTokenFromString(request.Name)
+	if !tokenInName {
+		token = request.Opts[api.Token]
+	}
+	md := metadata.New(map[string]string{
+		"authorization": "bearer " + token,
+	})
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+
+	// get grpc connection
+	conn, err := d.getConn()
+	if err != nil {
+		d.errorResponse(method, w, err)
+		return
+	}
+
+	spec.VolumeLabels = locator.VolumeLabels
+	volumes := api.NewOpenStorageVolumeClient(conn)
+	if source != nil && len(source.Parent) != 0 {
+		// clone
+		_, err = volumes.Clone(ctx, &api.SdkVolumeCloneRequest{
+			Name:     name,
+			ParentId: source.Parent,
+		})
+	} else {
+		// create
+		_, err = volumes.Create(ctx, &api.SdkVolumeCreateRequest{
+			Name: name,
+			Spec: spec,
+		})
+	}
+	if err != nil {
+		d.errorResponse(method, w, err)
+		return
+	}
+
+	/*
+		// If we fail to find the volume, create it.
+		if _, err = d.volFromName(name); err != nil {
+			v, err := volumedrivers.Get(d.name)
+			if err != nil {
+				d.errorResponse(method, w, err)
+				return
+			}
+			if !specParsed {
+				spec, locator, source, err = d.SpecFromOpts(request.Opts)
+				if err != nil {
+					d.errorResponse(method, w, err)
+					return
+				}
+			}
+			if locator == nil {
+				locator = &api.VolumeLocator{}
+			}
+			locator.Name = name
+			if source != nil && len(source.Parent) != 0 {
+				vol, err := d.volFromName(source.Parent)
+				if err != nil {
+					d.errorResponse(method, w, err)
+					return
+				}
+				if _, err = v.Snapshot(vol.Id,
+					false,
+					&api.VolumeLocator{Name: name},
+					false,
+				); err != nil {
+					d.errorResponse(method, w, err)
+					return
+				}
+			} else if _, err := v.Create(
+				locator,
+				nil,
+				spec,
+			); err != nil && err != volume.ErrExist {
+				d.errorResponse(method, w, err)
+				return
+			}
+		}
+	*/
 	json.NewEncoder(w).Encode(&volumeResponse{})
 }
 
