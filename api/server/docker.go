@@ -157,7 +157,7 @@ func (d *driver) volFromNameSdk(ctx context.Context, volumes api.OpenStorageVolu
 		VolumeId: volId,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Cannot locate volume with name %s", name)
+		return nil, err
 	}
 	return inspectResp.Volume, nil
 }
@@ -224,11 +224,14 @@ func (d *driver) attachToken(ctx context.Context, request *volumeRequest) (conte
 	if !tokenInName {
 		token = request.Opts[api.Token]
 	}
-	if len(token) == 0 {
-		token, _ = d.cookie.Pop(request.Name)
-	}
+	/*
+		if len(token) == 0 {
+			token, _ = d.cookie.Pop(request.Name)
+		}
+	*/
 	if len(token) == 0 {
 		return ctx, ""
+		//token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im1AcG9ydHdvcnguY29tIiwiZXhwIjoxNTc5MjQxODk3LCJncm91cHMiOlsiKiJdLCJpYXQiOjE1NDc3MDU4OTcsImlzcyI6Im9wZW5zdG9yYWdlLmlvIiwibmFtZSI6Ik1vbml0b3IiLCJyb2xlcyI6WyJzeXN0ZW0udmlldyJdLCJzdWIiOiJiM0JsYm5OMGIzSmhaMlV1YVc4dlRXOXVhWFJ2Y2k5dFFIQnZjblIzYjNKNExtTnZiUT09In0.st6wj68ifx2YxYr-yAE1eCrC04kKFaofG0YV6V8ZgC4"
 	}
 
 	md := metadata.New(map[string]string{
@@ -282,6 +285,7 @@ func (d *driver) create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	d.logRequest(method, "").Infof("Req: %v", request)
 
 	// attach token in context metadata
 	ctx, _ = d.attachToken(ctx, request)
@@ -335,6 +339,7 @@ func (d *driver) remove(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	d.logRequest(method, "").Infof("Req: %v", request)
 
 	// attach token in context metadata
 	ctx, _ = d.attachToken(ctx, request)
@@ -390,6 +395,7 @@ func (d *driver) mount(w http.ResponseWriter, r *http.Request) {
 		d.errorResponse(method, w, err)
 		return
 	}
+	d.logRequest(method, "").Infof("Req: %v", request)
 
 	// get spec and name from request
 	_, spec, _, _, name := d.SpecFromString(request.Name)
@@ -436,11 +442,115 @@ func (d *driver) mount(w http.ResponseWriter, r *http.Request) {
 
 func (d *driver) path(w http.ResponseWriter, r *http.Request) {
 	method := "path"
+	var response volumePathResponse
+	d.logRequest(method, "").Infof("")
+
+	request, err := d.decode(method, w, r)
+	if err != nil {
+		return
+	}
+
+	_, _, _, _, name := d.SpecFromString(request.Name)
+	vol, err := d.volFromName(name)
+	if err != nil {
+		e := d.volNotFound(method, request.Name, err, w)
+		d.errorResponse(method, w, e)
+		return
+	}
+
+	d.logRequest(method, name).Debugf("")
+	if len(vol.AttachPath) == 0 || len(vol.AttachPath) == 0 {
+		e := d.volNotMounted(method, name)
+		d.errorResponse(method, w, e)
+		return
+	}
+	response.Mountpoint = vol.AttachPath[0]
+	response.Mountpoint = path.Join(response.Mountpoint, config.DataDir)
+	d.logRequest(method, request.Name).Debugf("response %v", response.Mountpoint)
+	json.NewEncoder(w).Encode(&response)
+}
+
+func (d *driver) list(w http.ResponseWriter, r *http.Request) {
+	method := "list"
+
+	d.logRequest(method, "").Infof("")
+
+	v, err := volumedrivers.Get(d.name)
+	if err != nil {
+		d.logRequest(method, "").Warnf("Cannot locate volume driver: %v", err.Error())
+		d.errorResponse(method, w, err)
+		return
+	}
+
+	vols, err := v.Enumerate(nil, nil)
+	if err != nil {
+		d.errorResponse(method, w, err)
+		return
+	}
+
+	volInfo := make([]volumeInfo, len(vols))
+	for i, v := range vols {
+		volInfo[i].Name = v.Locator.Name
+		if len(v.AttachPath) > 0 || len(v.AttachPath) > 0 {
+			volInfo[i].Mountpoint = path.Join(v.AttachPath[0], config.DataDir)
+		}
+	}
+	json.NewEncoder(w).Encode(map[string][]volumeInfo{"Volumes": volInfo})
+}
+
+func (d *driver) get(w http.ResponseWriter, r *http.Request) {
+	method := "get"
+
+	request, err := d.decode(method, w, r)
+	if err != nil {
+		return
+	}
+	d.logRequest(method, "").Infof("Req: %v", request)
+	parsed, _, _, _, name := d.SpecFromString(request.Name)
+	returnName := ""
+
+	// This looks like a bug
+	if parsed {
+		returnName = request.Name
+	} else {
+		returnName = name
+	}
+	d.logRequest(method, "").
+		Infof("returnName = %s, request.Name=%s, name=%s",
+			returnName,
+			request.Name,
+			name)
+	vol, err := d.volFromName(name)
+	if err != nil {
+		e := d.volNotFound(method, request.Name, err, w)
+		d.errorResponse(method, w, e)
+		return
+	}
+
+	volInfo := volumeInfo{Name: returnName}
+	if len(vol.AttachPath) > 0 || len(vol.AttachPath) > 0 {
+		volInfo.Mountpoint = path.Join(vol.AttachPath[0], config.DataDir)
+	}
+
+	/*
+		_, token := d.attachToken(context.Background(), request)
+		if len(token) != 0 {
+			d.cookie.Push(name, token)
+		}
+	*/
+
+	json.NewEncoder(w).Encode(map[string]volumeInfo{"Volume": volInfo})
+}
+
+/*
+func (d *driver) path(w http.ResponseWriter, r *http.Request) {
+	method := "path"
 	ctx := r.Context()
 	request, err := d.decode(method, w, r)
 	if err != nil {
 		return
 	}
+	d.logRequest(method, "").Infof("Req: %v", request)
 	var response volumePathResponse
 
 	// attach token in context metadata
@@ -490,7 +600,9 @@ func (d *driver) list(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// attach token in context metadata
-	ctx, _ = d.attachToken(ctx, request)
+	var token string
+	ctx, token = d.attachToken(ctx, request)
+	d.logRequest(method, "").Infof("Req: %v\nToken: %s", request, token)
 
 	// get grpc connection
 	conn, err := d.getConn()
@@ -504,11 +616,13 @@ func (d *driver) list(w http.ResponseWriter, r *http.Request) {
 	enumerateResp, err := volumes.Enumerate(ctx, &api.SdkVolumeEnumerateRequest{})
 	if err != nil {
 		d.errorResponse(method, w, err)
+		d.logRequest(method, "").Infof("List failed")
 		return
 	}
+	d.logRequest(method, "").Infof("Volumes: %+v", enumerateResp.GetVolumeIds())
 
-	volInfo := make([]volumeInfo, len(enumerateResp.VolumeIds))
-	for i, id := range enumerateResp.VolumeIds {
+	volInfo := make([]volumeInfo, len(enumerateResp.GetVolumeIds()))
+	for i, id := range enumerateResp.GetVolumeIds() {
 		inspectResp, err := volumes.Inspect(ctx, &api.SdkVolumeInspectRequest{
 			VolumeId: id,
 		})
@@ -520,7 +634,17 @@ func (d *driver) list(w http.ResponseWriter, r *http.Request) {
 			volInfo[i].Mountpoint = path.Join(inspectResp.Volume.AttachPath[0], config.DataDir)
 		}
 	}
-	json.NewEncoder(w).Encode(map[string][]volumeInfo{"Volumes": volInfo})
+
+	type listresp struct {
+		Volumes []volumeInfo
+		Err     string
+	}
+	lr := listresp{
+		Volumes: volInfo,
+	}
+	d.logRequest(method, "").Infof("List resp: %v", lr)
+
+	json.NewEncoder(w).Encode(lr)
 }
 
 func (d *driver) get(w http.ResponseWriter, r *http.Request) {
@@ -530,6 +654,7 @@ func (d *driver) get(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	d.logRequest(method, "").Infof("Req: %v", request)
 
 	// attach token in context metadata
 	var token string
@@ -573,6 +698,7 @@ func (d *driver) get(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(map[string]volumeInfo{"Volume": volInfo})
 }
+*/
 
 func (d *driver) unmountInsecure(w http.ResponseWriter, r *http.Request) {
 	method := "unmount"
@@ -590,6 +716,7 @@ func (d *driver) unmountInsecure(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	d.logRequest(method, "").Infof("Req: %v", request)
 
 	_, _, _, _, name := d.SpecFromString(request.Name)
 	vol, err := d.volFromName(name)
@@ -713,6 +840,7 @@ func (c *CookieOnce) Pop(key string) (string, bool) {
 	defer c.lock.Unlock()
 
 	if val, ok := c.cookie[key]; ok {
+		fmt.Printf("** pop %s : %s\n", key, val)
 		delete(c.cookie, key)
 		return val, true
 	}
@@ -724,6 +852,7 @@ func (c *CookieOnce) Push(key, val string) {
 	defer c.lock.Unlock()
 
 	c.cookie[key] = val
+	fmt.Printf("** push %s : %s\n", key, val)
 
 	// Start timer to remove key
 	go func() {
