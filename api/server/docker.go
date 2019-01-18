@@ -440,6 +440,7 @@ func (d *driver) mount(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(&response)
 }
 
+/*
 func (d *driver) path(w http.ResponseWriter, r *http.Request) {
 	method := "path"
 	var response volumePathResponse
@@ -469,6 +470,7 @@ func (d *driver) path(w http.ResponseWriter, r *http.Request) {
 	d.logRequest(method, request.Name).Debugf("response %v", response.Mountpoint)
 	json.NewEncoder(w).Encode(&response)
 }
+*/
 
 func (d *driver) list(w http.ResponseWriter, r *http.Request) {
 	method := "list"
@@ -498,6 +500,7 @@ func (d *driver) list(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string][]volumeInfo{"Volumes": volInfo})
 }
 
+/*
 func (d *driver) get(w http.ResponseWriter, r *http.Request) {
 	method := "get"
 
@@ -532,17 +535,15 @@ func (d *driver) get(w http.ResponseWriter, r *http.Request) {
 		volInfo.Mountpoint = path.Join(vol.AttachPath[0], config.DataDir)
 	}
 
-	/*
 		_, token := d.attachToken(context.Background(), request)
 		if len(token) != 0 {
 			d.cookie.Push(name, token)
 		}
-	*/
 
 	json.NewEncoder(w).Encode(map[string]volumeInfo{"Volume": volInfo})
 }
+*/
 
-/*
 func (d *driver) path(w http.ResponseWriter, r *http.Request) {
 	method := "path"
 	ctx := r.Context()
@@ -554,8 +555,8 @@ func (d *driver) path(w http.ResponseWriter, r *http.Request) {
 	var response volumePathResponse
 
 	// attach token in context metadata
-	var token string
-	ctx, token = d.attachToken(ctx, request)
+	//var token string
+	ctx, _ = d.attachToken(ctx, request)
 
 	// get grpc connection
 	conn, err := d.getConn()
@@ -574,9 +575,11 @@ func (d *driver) path(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save the cookie
-	if len(token) != 0 {
-		d.cookie.Push(name, token)
-	}
+	/*
+		if len(token) != 0 {
+			d.cookie.Push(name, token)
+		}
+	*/
 
 	d.logRequest(method, name).Debugf("")
 	if len(vol.AttachPath) == 0 || len(vol.AttachPath) == 0 {
@@ -590,6 +593,8 @@ func (d *driver) path(w http.ResponseWriter, r *http.Request) {
 	d.logRequest(method, request.Name).Debugf("response %v", response.Mountpoint)
 	json.NewEncoder(w).Encode(&response)
 }
+
+/*
 
 func (d *driver) list(w http.ResponseWriter, r *http.Request) {
 	method := "list"
@@ -646,6 +651,7 @@ func (d *driver) list(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(lr)
 }
+*/
 
 func (d *driver) get(w http.ResponseWriter, r *http.Request) {
 	method := "get"
@@ -657,13 +663,13 @@ func (d *driver) get(w http.ResponseWriter, r *http.Request) {
 	d.logRequest(method, "").Infof("Req: %v", request)
 
 	// attach token in context metadata
-	var token string
-	ctx, token = d.attachToken(ctx, request)
+	//var token string
+	ctx, _ = d.attachToken(ctx, request)
 
 	// get name from the request
 	parsed, _, _, _, name := d.SpecFromString(request.Name)
 	var returnName string
-	if !parsed {
+	if parsed {
 		returnName = request.Name
 	} else {
 		returnName = name
@@ -686,9 +692,11 @@ func (d *driver) get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save the cookie
-	if len(token) != 0 {
-		d.cookie.Push(name, token)
-	}
+	/*
+		if len(token) != 0 {
+			d.cookie.Push(name, token)
+		}
+	*/
 
 	// create response info
 	volInfo := volumeInfo{Name: returnName}
@@ -698,7 +706,6 @@ func (d *driver) get(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(map[string]volumeInfo{"Volume": volInfo})
 }
-*/
 
 func (d *driver) unmountInsecure(w http.ResponseWriter, r *http.Request) {
 	method := "unmount"
