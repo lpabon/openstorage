@@ -76,7 +76,7 @@ func (s *VolumeServer) create(
 
 		// Check ownership
 		// Snapshots just need read access
-		if !parent.IsPermitted(ctx, Ownership_Read) {
+		if !parent.IsPermitted(ctx, api.Ownership_Read) {
 			return "", status.Errorf(codes.PermissionDenied, "Access denied to volume %s", parent.GetId())
 		}
 
@@ -249,8 +249,8 @@ func (s *VolumeServer) Delete(
 	vol := resp.GetVolume()
 
 	// Only the owner or the admin can delete
-	if !vol.IsPermitted(ctx, Ownership_Admin) {
-		return nil, status.Errorf(codes.PermissionDenied, "Cannot delete volume")
+	if !vol.IsPermitted(ctx, api.Ownership_Admin) {
+		return nil, status.Errorf(codes.PermissionDenied, "Cannot delete volume %v", vol.GetId())
 	}
 
 	// Delete the volume
@@ -294,7 +294,7 @@ func (s *VolumeServer) Inspect(
 	v := vols[0]
 
 	// Check ownership
-	if !v.IsPermitted(ctx, Ownership_Read) {
+	if !v.IsPermitted(ctx, api.Ownership_Read) {
 		return nil, status.Errorf(codes.PermissionDenied, "Access denied to volume %s", v.GetId())
 	}
 
@@ -360,7 +360,7 @@ func (s *VolumeServer) EnumerateWithFilters(
 	ids := make([]string, 0)
 	for _, vol := range vols {
 		// Check access
-		if vol.IsPermitted(ctx, Ownership_Read) {
+		if vol.IsPermitted(ctx, api.Ownership_Read) {
 			ids = append(ids, vol.GetId())
 		}
 	}
@@ -393,7 +393,7 @@ func (s *VolumeServer) Update(
 	}
 
 	// Check if the caller can update the volume
-	if !resp.GetVolume().IsPermitted(ctx, Ownership_Write) {
+	if !resp.GetVolume().IsPermitted(ctx, api.Ownership_Write) {
 		return nil, status.Errorf(codes.PermissionDenied, "Cannot update volume")
 	}
 
@@ -444,7 +444,7 @@ func (s *VolumeServer) Stats(
 	}
 
 	// Get access rights
-	if err := s.checkAccessForVolumeId(ctx, req.GetVolumeId()); err != nil {
+	if err := s.checkAccessForVolumeId(ctx, req.GetVolumeId(), api.Ownership_Read); err != nil {
 		return nil, err
 	}
 
@@ -472,7 +472,7 @@ func (s *VolumeServer) CapacityUsage(
 	}
 
 	// Get access rights
-	if err := s.checkAccessForVolumeId(ctx, req.GetVolumeId()); err != nil {
+	if err := s.checkAccessForVolumeId(ctx, req.GetVolumeId(), api.Ownership_Read); err != nil {
 		return nil, err
 	}
 

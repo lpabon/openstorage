@@ -984,7 +984,9 @@ func TestSdkCloneOwnership(t *testing.T) {
 	parentVol.Spec.Ownership = &api.Ownership{
 		Owner: user1,
 		Acls: &api.Ownership_AccessControl{
-			Collaborators: []string{user2},
+			Collaborators: map[string]api.Ownership_AccessType{
+				user2: api.Ownership_Read,
+			},
 		},
 	}
 
