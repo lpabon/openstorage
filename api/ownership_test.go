@@ -335,18 +335,28 @@ func TestOwnershipUpdate(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				}},
 			update: &Ownership{
 				Owner: "user2",
 				Acls: &Ownership_AccessControl{
-					Collaborators: []string{"user1", "user2", "user3"},
+					Collaborators: map[string]Ownership_AccessType{
+						"user1": Ownership_Read,
+						"user2": Ownership_Read,
+						"user3": Ownership_Read,
+					},
 				},
 			},
 			result: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Collaborators: []string{"user1", "user2", "user3"},
+					Collaborators: map[string]Ownership_AccessType{
+						"user1": Ownership_Read,
+						"user2": Ownership_Read,
+						"user3": Ownership_Read,
+					},
 				},
 			},
 			user: &auth.UserInfo{
@@ -361,20 +371,36 @@ func TestOwnershipUpdate(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				}},
 			update: &Ownership{
 				Owner: "user2",
 				Acls: &Ownership_AccessControl{
-					Groups:        []string{"group1", "group2"},
-					Collaborators: []string{"user1", "user2", "user3"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+						"group2": Ownership_Admin,
+					},
+					Collaborators: map[string]Ownership_AccessType{
+						"user1": Ownership_Read,
+						"user2": Ownership_Read,
+						"user3": Ownership_Read,
+					},
 				},
 			},
 			result: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups:        []string{"group1", "group2"},
-					Collaborators: []string{"user1", "user2", "user3"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+						"group2": Ownership_Admin,
+					},
+					Collaborators: map[string]Ownership_AccessType{
+						"user1": Ownership_Read,
+						"user2": Ownership_Read,
+						"user3": Ownership_Read,
+					},
 				},
 			},
 			user: &auth.UserInfo{
@@ -389,7 +415,9 @@ func TestOwnershipUpdate(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				}},
 			update: &Ownership{
 				Owner: "user2",
@@ -410,7 +438,9 @@ func TestOwnershipUpdate(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				}},
 			update: &Ownership{
 				Acls: &Ownership_AccessControl{},
@@ -430,7 +460,9 @@ func TestOwnershipUpdate(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				}},
 			update: &Ownership{
 				Acls: &Ownership_AccessControl{},
@@ -438,7 +470,9 @@ func TestOwnershipUpdate(t *testing.T) {
 			result: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				}},
 			user: &auth.UserInfo{
 				Username: "anotheruser",
@@ -468,7 +502,9 @@ func TestOwnershipIsMatch(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				},
 			},
 			match: &Ownership{
@@ -481,7 +517,9 @@ func TestOwnershipIsMatch(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				},
 			},
 			isMatch: false,
@@ -490,7 +528,9 @@ func TestOwnershipIsMatch(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				},
 			},
 			match: &Ownership{
@@ -502,13 +542,17 @@ func TestOwnershipIsMatch(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				},
 			},
 			match: &Ownership{
 				Owner: "user2",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"group1"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
 				},
 			},
 			isMatch: true,
@@ -517,14 +561,22 @@ func TestOwnershipIsMatch(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups:        []string{"group1"},
-					Collaborators: []string{"one", "two", "three"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
+					Collaborators: map[string]Ownership_AccessType{
+						"one":   Ownership_Read,
+						"two":   Ownership_Read,
+						"three": Ownership_Read,
+					},
 				},
 			},
 			match: &Ownership{
 				Owner: "user2",
 				Acls: &Ownership_AccessControl{
-					Groups: []string{"one"},
+					Groups: map[string]Ownership_AccessType{
+						"one": Ownership_Admin,
+					},
 				},
 			},
 			isMatch: false,
@@ -533,14 +585,22 @@ func TestOwnershipIsMatch(t *testing.T) {
 			owner: &Ownership{
 				Owner: "user1",
 				Acls: &Ownership_AccessControl{
-					Groups:        []string{"group1"},
-					Collaborators: []string{"one", "two", "three"},
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
+					Collaborators: map[string]Ownership_AccessType{
+						"one":   Ownership_Read,
+						"two":   Ownership_Read,
+						"three": Ownership_Read,
+					},
 				},
 			},
 			match: &Ownership{
 				Owner: "user2",
 				Acls: &Ownership_AccessControl{
-					Collaborators: []string{"three"},
+					Collaborators: map[string]Ownership_AccessType{
+						"three": Ownership_Read,
+					},
 				},
 			},
 			isMatch: true,
