@@ -26,17 +26,82 @@ import (
 	"github.com/libopenstorage/openstorage/pkg/auth"
 )
 
-func TestOwnershipIsPermitted(t *testing.T) {
+func TestOwnershipAccessType(t *testing.T) {
 	tests := []struct {
-		owner     *Ownership
-		user      *auth.UserInfo
+		acl       Ownership_AccessType
+		request   Ownership_AccessType
 		permitted bool
 	}{
 		{
+			acl:       Ownership_Read,
+			request:   Ownership_Read,
+			permitted: true,
+		},
+		{
+			acl:       Ownership_Read,
+			request:   Ownership_Write,
+			permitted: false,
+		},
+		{
+			acl:       Ownership_Read,
+			request:   Ownership_Admin,
+			permitted: false,
+		},
+		{
+			acl:       Ownership_Write,
+			request:   Ownership_Read,
+			permitted: true,
+		},
+		{
+			acl:       Ownership_Write,
+			request:   Ownership_Write,
+			permitted: true,
+		},
+		{
+			acl:       Ownership_Write,
+			request:   Ownership_Admin,
+			permitted: false,
+		},
+		{
+			acl:       Ownership_Admin,
+			request:   Ownership_Read,
+			permitted: true,
+		},
+		{
+			acl:       Ownership_Admin,
+			request:   Ownership_Write,
+			permitted: true,
+		},
+		{
+			acl:       Ownership_Admin,
+			request:   Ownership_Admin,
+			permitted: true,
+		},
+	}
+
+	for _, test := range tests {
+		assert.Equal(t,
+			test.acl.isAccessPermitted(test.request),
+			test.permitted,
+			fmt.Sprintf("acl:%v req:%v p:%v\n", test.acl, test.request, test.permitted))
+	}
+
+}
+
+func TestOwnershipIsPermitted(t *testing.T) {
+	tests := []struct {
+		owner      *Ownership
+		user       *auth.UserInfo
+		accessType Ownership_AccessType
+		permitted  bool
+	}{
+		{
+			// no owner set, so it is a public volume
 			owner:     &Ownership{},
 			permitted: true,
 		},
 		{
+			// no owner set, so it is a public volume
 			owner: &Ownership{
 				Acls: &Ownership_AccessControl{
 					Groups: map[string]Ownership_AccessType{},
@@ -45,6 +110,7 @@ func TestOwnershipIsPermitted(t *testing.T) {
 			permitted: true,
 		},
 		{
+			// no owner set, so it is a public volume
 			owner: &Ownership{
 				Acls: &Ownership_AccessControl{
 					Groups: map[string]Ownership_AccessType{
@@ -84,6 +150,26 @@ func TestOwnershipIsPermitted(t *testing.T) {
 		{
 			owner: &Ownership{
 				Owner: "me",
+			},
+			user: &auth.UserInfo{
+				Username: "me",
+			},
+			accessType: Ownership_Write,
+			permitted:  true,
+		},
+		{
+			owner: &Ownership{
+				Owner: "me",
+			},
+			user: &auth.UserInfo{
+				Username: "me",
+			},
+			accessType: Ownership_Admin,
+			permitted:  true,
+		},
+		{
+			owner: &Ownership{
+				Owner: "me",
 				Acls: &Ownership_AccessControl{
 					Groups: map[string]Ownership_AccessType{},
 				},
@@ -107,6 +193,43 @@ func TestOwnershipIsPermitted(t *testing.T) {
 				},
 			},
 			permitted: false,
+		},
+		{
+			owner: &Ownership{
+				Owner: "me",
+				Acls: &Ownership_AccessControl{
+					Groups: map[string]Ownership_AccessType{},
+					Collaborators: map[string]Ownership_AccessType{
+						"*": Ownership_Read,
+					},
+				},
+			},
+			user: &auth.UserInfo{
+				Username: "notme",
+				Claims: auth.Claims{
+					Groups: []string{},
+				},
+			},
+			permitted: true,
+		},
+		{
+			owner: &Ownership{
+				Owner: "me",
+				Acls: &Ownership_AccessControl{
+					Groups: map[string]Ownership_AccessType{},
+					Collaborators: map[string]Ownership_AccessType{
+						"*": Ownership_Read,
+					},
+				},
+			},
+			user: &auth.UserInfo{
+				Username: "notme",
+				Claims: auth.Claims{
+					Groups: []string{},
+				},
+			},
+			accessType: Ownership_Write,
+			permitted:  false,
 		},
 		{
 			owner: &Ownership{
@@ -124,6 +247,24 @@ func TestOwnershipIsPermitted(t *testing.T) {
 				},
 			},
 			permitted: true,
+		},
+		{
+			owner: &Ownership{
+				Owner: "me",
+				Acls: &Ownership_AccessControl{
+					Groups: map[string]Ownership_AccessType{
+						"*": Ownership_Read,
+					},
+				},
+			},
+			user: &auth.UserInfo{
+				Username: "notme",
+				Claims: auth.Claims{
+					Groups: []string{},
+				},
+			},
+			accessType: Ownership_Write,
+			permitted:  false,
 		},
 		{
 			owner: &Ownership{
@@ -222,6 +363,27 @@ func TestOwnershipIsPermitted(t *testing.T) {
 						"group3": Ownership_Admin,
 					},
 					Collaborators: map[string]Ownership_AccessType{
+						"*": Ownership_Read,
+					},
+				},
+			},
+			user: &auth.UserInfo{
+				Username: "notme",
+				Claims: auth.Claims{
+					Groups: []string{"group1", "group2"},
+				},
+			},
+			accessType: Ownership_Admin,
+			permitted:  false,
+		},
+		{
+			owner: &Ownership{
+				Owner: "me",
+				Acls: &Ownership_AccessControl{
+					Groups: map[string]Ownership_AccessType{
+						"group3": Ownership_Admin,
+					},
+					Collaborators: map[string]Ownership_AccessType{
 						"user1": Ownership_Read,
 						"user2": Ownership_Read,
 						"user3": Ownership_Read,
@@ -258,6 +420,30 @@ func TestOwnershipIsPermitted(t *testing.T) {
 				},
 			},
 			permitted: true,
+		},
+		{
+			owner: &Ownership{
+				Owner: "me",
+				Acls: &Ownership_AccessControl{
+					Groups: map[string]Ownership_AccessType{
+						"group3": Ownership_Admin,
+					},
+					Collaborators: map[string]Ownership_AccessType{
+						"user1": Ownership_Read,
+						"user2": Ownership_Read,
+						"user3": Ownership_Read,
+						"notme": Ownership_Read,
+					},
+				},
+			},
+			user: &auth.UserInfo{
+				Username: "notme",
+				Claims: auth.Claims{
+					Groups: []string{"group1", "group2"},
+				},
+			},
+			accessType: Ownership_Admin,
+			permitted:  false,
 		},
 		{
 			owner: &Ownership{
@@ -318,7 +504,10 @@ func TestOwnershipIsPermitted(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.owner.IsPermitted(test.user), test.permitted, fmt.Sprintf("Owner:%v\nUser:%v\nPermitted:%v\n", test.owner, test.user, test.permitted))
+		assert.Equal(t,
+			test.owner.IsPermitted(test.user, test.accessType),
+			test.permitted,
+			fmt.Sprintf("Owner:%v\nUser:%v\nPermitted:%v\n", test.owner, test.user, test.permitted))
 	}
 }
 
@@ -365,6 +554,41 @@ func TestOwnershipUpdate(t *testing.T) {
 					Groups: []string{"group"},
 				},
 			},
+			expectErr: true,
+		},
+		{
+			owner: &Ownership{
+				Owner: "user1",
+				Acls: &Ownership_AccessControl{
+					Groups: map[string]Ownership_AccessType{
+						"group1": Ownership_Admin,
+					},
+				}},
+			update: &Ownership{
+				Acls: &Ownership_AccessControl{
+					Collaborators: map[string]Ownership_AccessType{
+						"user1": Ownership_Read,
+						"user2": Ownership_Read,
+						"user3": Ownership_Read,
+					},
+				},
+			},
+			result: &Ownership{
+				Owner: "user1",
+				Acls: &Ownership_AccessControl{
+					Collaborators: map[string]Ownership_AccessType{
+						"user1": Ownership_Read,
+						"user2": Ownership_Read,
+						"user3": Ownership_Read,
+					},
+				},
+			},
+			user: &auth.UserInfo{
+				Username: "user1",
+				Claims: auth.Claims{
+					Groups: []string{"group"},
+				},
+			},
 			expectErr: false,
 		},
 		{
@@ -376,7 +600,6 @@ func TestOwnershipUpdate(t *testing.T) {
 					},
 				}},
 			update: &Ownership{
-				Owner: "user2",
 				Acls: &Ownership_AccessControl{
 					Groups: map[string]Ownership_AccessType{
 						"group1": Ownership_Admin,

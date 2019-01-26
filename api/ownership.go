@@ -55,7 +55,10 @@ func OwnershipSetUsernameFromContext(ctx context.Context, srcOwnership *Ownershi
 
 // IsPermitted returns true if the user has access to the resource
 // according to the ownership. If there is no owner, then it is public
-func (o *Ownership) IsPermitted(user *auth.UserInfo) bool {
+func (o *Ownership) IsPermitted(
+	user *auth.UserInfo,
+	accessType Ownership_AccessType,
+) bool {
 	// There is no owner, so it is a public resource
 	if !o.HasAnOwner() {
 		return true
@@ -69,8 +72,8 @@ func (o *Ownership) IsPermitted(user *auth.UserInfo) bool {
 	}
 
 	if o.IsOwner(user) ||
-		o.IsUserAllowedByGroup(user) ||
-		o.IsUserAllowedByCollaborators(user) {
+		o.IsUserAllowedByGroup(user, accessType) ||
+		o.IsUserAllowedByCollaborators(user, accessType) {
 		return true
 	}
 
@@ -95,7 +98,10 @@ func (o *Ownership) GetCollaborators() map[string]Ownership_AccessType {
 
 // IsUserAllowedByGroup returns true if the user is allowed access
 // by belonging to the appropriate group
-func (o *Ownership) IsUserAllowedByGroup(user *auth.UserInfo) bool {
+func (o *Ownership) IsUserAllowedByGroup(
+	user *auth.UserInfo,
+	accessType Ownership_AccessType,
+) bool {
 
 	// Allow if it is the admin user for any group
 	if o.IsAdminByUser(user) {
@@ -107,37 +113,44 @@ func (o *Ownership) IsUserAllowedByGroup(user *auth.UserInfo) bool {
 		return false
 	}
 
-	// Check if any group is allowed
-	if _, ok := ownergroups["*"]; ok {
-		return true
-	}
-
 	// Check each of the groups from the user
 	for _, group := range user.Claims.Groups {
 		// Check if the user group has permission
-		if _, ok := ownergroups[group]; ok {
-			return true
+		if a, ok := ownergroups[group]; ok {
+			return a.isAccessPermitted(accessType)
 		}
 	}
+
+	// Check if any group is allowed
+	if a, ok := ownergroups["*"]; ok {
+		return a.isAccessPermitted(accessType)
+	}
+
 	return false
 }
 
 // IsUserAllowedByCollaborators returns true if the user is allowed access
 // because they are part of the collaborators list
-func (o *Ownership) IsUserAllowedByCollaborators(user *auth.UserInfo) bool {
+func (o *Ownership) IsUserAllowedByCollaborators(
+	user *auth.UserInfo,
+	accessType Ownership_AccessType,
+) bool {
 	collaborators := o.GetCollaborators()
 	if len(collaborators) == 0 {
 		return false
 	}
 
-	// Check any user is allowed
-	if _, ok := collaborators["*"]; ok {
-		return true
+	// Check each of the groups from the user
+	if a, ok := collaborators[user.Username]; ok {
+		return a.isAccessPermitted(accessType)
 	}
 
-	// Check each of the groups from the user
-	_, ok := collaborators[user.Username]
-	return ok
+	// Check any user is allowed
+	if a, ok := collaborators["*"]; ok {
+		return a.isAccessPermitted(accessType)
+	}
+
+	return false
 }
 
 // HasAnOwner returns true if the resource has an owner
@@ -185,8 +198,13 @@ func (o *Ownership) Update(newownerInfo *Ownership, user *auth.UserInfo) error {
 		o.Acls = newownerInfo.GetAcls()
 
 		// Only the admin can change the owner
-		if o.IsAdminByUser(user) && len(newownerInfo.Owner) != 0 {
-			o.Owner = newownerInfo.Owner
+		if len(newownerInfo.Owner) != 0 {
+			if o.IsAdminByUser(user) {
+				o.Owner = newownerInfo.Owner
+			} else {
+				return status.Error(codes.PermissionDenied,
+					"Only the administrator can change the owner of the resource")
+			}
 		}
 	}
 	return nil
@@ -222,6 +240,10 @@ func (o *Ownership) IsMatch(check *Ownership) bool {
 	}
 
 	return false
+}
+
+func (a Ownership_AccessType) isAccessPermitted(accessType Ownership_AccessType) bool {
+	return a >= accessType
 }
 
 func listContains(list []string, s string) bool {

@@ -973,7 +973,7 @@ func (v *VolumeSpec) IsPermittedFromUserInfo(user *auth.UserInfo) bool {
 	}
 
 	if v.GetOwnership() != nil {
-		return v.GetOwnership().IsPermitted(user)
+		return v.GetOwnership().IsPermitted(user, Ownership_Read)
 	}
 	return true
 }
