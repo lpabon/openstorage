@@ -39,10 +39,20 @@ func (s *VolumeServer) driver() volume.VolumeDriver {
 	return s.server.driver()
 }
 
-func (s *VolumeServer) checkAccessForVolumeId(ctx context.Context, volumeId string) error {
+func (s *VolumeServer) checkAccessForVolumeId(
+	ctx context.Context,
+	volumeId string,
+	accessType Ownership_AccessType,
+) error {
 	// Inspect will check access for us
-	_, err := s.Inspect(ctx, &api.SdkVolumeInspectRequest{
+	resp, err := s.Inspect(ctx, &api.SdkVolumeInspectRequest{
 		VolumeId: volumeId,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	if !resp.GetVolume().IsPermitted(ctx, accessType) {
+		return nil, status.Errorf(codes.PermissionDenied, "Cannot delete volume %v", resp.GetVolume().GetId())
+	}
+	return nil
 }
