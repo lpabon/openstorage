@@ -386,6 +386,15 @@ message RuntimeStateMap {
 // Ownership information for resource.
 // Administrators are users who belong to the group `*`, meaning, every group.
 message Ownership {
+  enum AccessType {
+    // Read access only
+    Read = 0;
+    // Write access
+    Write = 1;
+    // Administrator access (can delete)
+    Admin = 2;
+  }
+
   message AccessControl {
     // Group access to resource which must be set in the authorization token.
     // Can be set by the owner or the system administrator only.
@@ -394,7 +403,8 @@ message Ownership {
     // 2. `["*"]`: All groups are allowed.
     // 3. `["group1", "group2"]`: Only certain groups are allowed. In this example only
     // _group1_ and _group2_ are allowed.
-    repeated string groups = 2;
+    // repeated string groups = 2;
+    map <string, AccessType> groups = 1;
     // Collaborator access to resource gives access to other usernames.
     // Must be the username set in the authorization token. The owner or the
     // system administrator can set this value. Possible values are:
@@ -402,7 +412,8 @@ message Ownership {
     // 2. `["*"]`: All users are allowed.
     // 3. `["username1", "username2"]`: Only certain usernames are allowed. In this example only
     // _username1_ and _username2_ are allowed.
-    repeated string collaborators = 3;
+    //repeated string collaborators = 3;
+    map <string, AccessType> collaborators = 2;
   }
 
   // Username of owner.

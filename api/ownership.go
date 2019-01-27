@@ -53,24 +53,6 @@ func OwnershipSetUsernameFromContext(ctx context.Context, srcOwnership *Ownershi
 	return srcOwnership
 }
 
-// NewLocatorOwnershipFromContext is used by the Enumerate functions as a
-// simple way to filter for volumes only accessible by the user
-func NewLocatorOwnershipFromContext(ctx context.Context) *Ownership {
-	// Check if the context has information about the user. If not,
-	// then security is not enabled.
-	if userinfo, ok := auth.NewUserInfoFromContext(ctx); ok {
-		return &Ownership{
-			Owner: userinfo.Username,
-			Acls: &Ownership_AccessControl{
-				Groups:        userinfo.Claims.Groups,
-				Collaborators: []string{userinfo.Username},
-			},
-		}
-	}
-
-	return nil
-}
-
 // IsPermitted returns true if the user has access to the resource
 // according to the ownership. If there is no owner, then it is public
 func (o *Ownership) IsPermitted(user *auth.UserInfo) bool {
@@ -96,7 +78,7 @@ func (o *Ownership) IsPermitted(user *auth.UserInfo) bool {
 }
 
 // GetGroups returns the groups in the ownership
-func (o *Ownership) GetGroups() []string {
+func (o *Ownership) GetGroups() map[string]Ownership_AccessType {
 	if o.GetAcls() == nil {
 		return nil
 	}
@@ -104,7 +86,7 @@ func (o *Ownership) GetGroups() []string {
 }
 
 // GetCollaborators returns the collaborators in the ownership
-func (o *Ownership) GetCollaborators() []string {
+func (o *Ownership) GetCollaborators() map[string]Ownership_AccessType {
 	if o.GetAcls() == nil {
 		return nil
 	}
@@ -115,7 +97,7 @@ func (o *Ownership) GetCollaborators() []string {
 // by belonging to the appropriate group
 func (o *Ownership) IsUserAllowedByGroup(user *auth.UserInfo) bool {
 
-	// If it is the admin user for any group
+	// Allow if it is the admin user for any group
 	if o.IsAdminByUser(user) {
 		return true
 	}
@@ -126,20 +108,14 @@ func (o *Ownership) IsUserAllowedByGroup(user *auth.UserInfo) bool {
 	}
 
 	// Check if any group is allowed
-	if listContains(ownergroups, "*") {
+	if _, ok := ownergroups["*"]; ok {
 		return true
 	}
 
 	// Check each of the groups from the user
 	for _, group := range user.Claims.Groups {
-		// Check if the user is in the admin group and can access
-		// any resource
-		if group == AdminGroup {
-			return true
-		}
-
 		// Check if the user group has permission
-		if listContains(ownergroups, group) {
+		if _, ok := ownergroups[group]; ok {
 			return true
 		}
 	}
@@ -155,12 +131,13 @@ func (o *Ownership) IsUserAllowedByCollaborators(user *auth.UserInfo) bool {
 	}
 
 	// Check any user is allowed
-	if listContains(collaborators, "*") {
+	if _, ok := collaborators["*"]; ok {
 		return true
 	}
 
 	// Check each of the groups from the user
-	return listContains(collaborators, user.Username)
+	_, ok := collaborators[user.Username]
+	return ok
 }
 
 // HasAnOwner returns true if the resource has an owner
@@ -231,15 +208,15 @@ func (o *Ownership) IsMatch(check *Ownership) bool {
 	}
 
 	// Check groups
-	for _, group := range check.GetAcls().GetGroups() {
-		if listContains(o.GetAcls().GetGroups(), group) {
+	for group, _ := range check.GetAcls().GetGroups() {
+		if _, ok := o.GetAcls().GetGroups()[group]; ok {
 			return true
 		}
 	}
 
 	// Check collaborators
-	for _, collaborator := range check.GetAcls().GetCollaborators() {
-		if listContains(o.GetAcls().GetCollaborators(), collaborator) {
+	for collaborator, _ := range check.GetAcls().GetCollaborators() {
+		if _, ok := o.GetAcls().GetCollaborators()[collaborator]; ok {
 			return true
 		}
 	}
