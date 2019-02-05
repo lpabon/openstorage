@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/pkg/auth"
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
@@ -141,13 +142,16 @@ func (s *sdkGrpcServer) authorizationServerInterceptor(
 		"method":   info.FullMethod,
 	})
 
+	// check rules in the token
+
 	// Authorize
-	if err := s.roleServer.Verify(ctx, claims.Roles, info.FullMethod); err != nil {
+	if s.roleServer.Verify(ctx, claims.Roles, info.FullMethod) != nil &&
+		s.roleServer.VerifyRules([]*api.SdkRule(claims.Rules), info.FullMethod) != nil {
 		logger.Warning("Access denied")
 		return nil, status.Errorf(
 			codes.PermissionDenied,
 			"Access to %s denied: %v",
-			info.FullMethod, err)
+			info.FullMethod)
 	}
 
 	// Execute the command

@@ -314,7 +314,7 @@ func (r *SdkRoleManager) Verify(ctx context.Context, roles []string, fullmethod 
 			continue
 		}
 
-		if err := r.verifyRules(resp.GetRole().GetRules(), fullmethod); err == nil {
+		if err := r.VerifyRules(resp.GetRole().GetRules(), fullmethod); err == nil {
 			return nil
 		}
 	}
@@ -322,8 +322,8 @@ func (r *SdkRoleManager) Verify(ctx context.Context, roles []string, fullmethod 
 	return status.Errorf(codes.PermissionDenied, "Access denied to roles: %+s", roles)
 }
 
-// verifyRules checks if the rules authorize use of the API called `fullmethod`
-func (r *SdkRoleManager) verifyRules(rules []*api.SdkRule, fullmethod string) error {
+// VerifyRules checks if the rules authorize use of the API called `fullmethod`
+func (r *SdkRoleManager) VerifyRules(rules []*api.SdkRule, fullmethod string) error {
 	var reqService, reqApi string
 
 	// String: "/openstorage.api.OpenStorage<service>/<method>"

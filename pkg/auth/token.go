@@ -40,6 +40,13 @@ type Claims struct {
 	Roles []string `json:"roles,omitempty" yaml:"roles,omitempty"`
 	// (optional) Groups in which this account is part of
 	Groups []string `json:"groups,omitempty" yaml:"groups,omitempty"`
+	// (optional) Rules
+	Rules []struct {
+		// The gRPC service name in `OpenStorage<service name>` in lowercase
+		Services []string `protobuf:"bytes,1,rep,name=services" json:"services,omitempty" yaml:"services,omitempty"`
+		// The API name in the service in lowercase
+		Apis []string `protobuf:"bytes,2,rep,name=apis" json:"apis,omitempty" yaml:"apis,omitempty"`
+	} `json:"rules,omitempty" yaml:"rules,omitempty"`
 }
 
 // TokenIssuer returns the type of token. Values are: os, oidc

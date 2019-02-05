@@ -592,7 +592,7 @@ func TestSdkRoleVerifyRules(t *testing.T) {
 		if len(test.roles) != 0 {
 			err = s.Verify(context.Background(), test.roles, test.fullmethod)
 		} else {
-			err = s.verifyRules(test.rules, test.fullmethod)
+			err = s.VerifyRules(test.rules, test.fullmethod)
 		}
 
 		if test.denied {
