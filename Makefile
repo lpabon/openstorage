@@ -213,6 +213,11 @@ docker-build-mock-sdk-server: packr
 				-tags "$(TAGS)" \
 				-o ./_tmp/osd \
 				./cmd/osd
+	CGO_ENABLED=0 GOOS=linux go build \
+				-a -ldflags '-extldflags "-static"' \
+				-tags "$(TAGS)" \
+				-o ./_tmp/osd-token-generator \
+				./cmd/osd-token-generator
 	docker build -t $(IMAGE_MOCKSDKSERVER) -f Dockerfile.sdk .
 	rm -rf _tmp
 

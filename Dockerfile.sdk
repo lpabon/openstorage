@@ -4,5 +4,6 @@ MAINTAINER luis@portworx.com
 EXPOSE 9100 9110
 ADD ./etc/config/config-fake.yaml /config-fake.yaml
 ADD ./_tmp/osd /
+ADD ./_tmp/osd-token-generator /usr/bin/osd-token-generator
 ENTRYPOINT ["/osd"]
 CMD ["-d", "-f", "/config-fake.yaml"]
