@@ -376,6 +376,15 @@ message VolumeSpecUpdate {
 
 // VolumeSpecPolicy provides a method to set volume storage policy
 message VolumeSpecPolicy {
+  // This defines an operator for the policy comparisons
+  enum PolicyOp {
+    // Policy will make sure the value must be equal
+    Equal = 0;
+    // Policy will make sure the requested value must be greater than or equal
+    Minimum = 1;
+    // Policy will make sure the requested value must be less than or equal
+    Maximum = 2;
+  }
   // Size specifies the thin provisioned volume size in bytes
   oneof size_opt { uint64 size = 2; }
   // HaLevel specifies the number of copies of data.
@@ -414,6 +423,10 @@ message VolumeSpecPolicy {
   oneof encrypted_opt { bool encrypted = 26; }
   // Aggregation level Specifies the number of parts the volume can be aggregated from.
   oneof aggregation_level_opt { uint32 aggregation_level = 27; }
+  // Operator to check size
+  PolicyOp size_operator = 100;
+  // Operator to check HaLevel
+  PolicyOp ha_level_operator = 101;
 }
 
 // ReplicaSet set of machine IDs (nodes) to which part of this volume is erasure

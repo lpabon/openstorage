@@ -563,8 +563,14 @@ func mergeVolumeSpecsPolicy(vol *api.VolumeSpec, req *api.VolumeSpecPolicy) *api
 	}
 
 	// Volume configuration labels
-	// If none are provided, send `nil` to the driver
-	spec.VolumeLabels = req.GetVolumeLabels()
+	if spec.GetVolumeLabels() == nil {
+		spec.VolumeLabels = req.GetVolumeLabels()
+	} else {
+		// Merge labels
+		for k, v := range req.GetVolumeLabels() {
+			spec.VolumeLabels[k] = v
+		}
+	}
 
 	// Passphrase
 	if req.GetPassphraseOpt() != nil {
@@ -609,10 +615,21 @@ func mergeVolumeSpecsPolicy(vol *api.VolumeSpec, req *api.VolumeSpecPolicy) *api
 	}
 
 	// Size
+	spec.Size = vol.GetSize()
 	if req.GetSizeOpt() != nil {
-		spec.Size = req.GetSize()
-	} else {
-		spec.Size = vol.GetSize()
+		switch req.GetSizeOperator() {
+		case api.VolumeSpecPolicy_Maximum:
+			if vol.GetSize() > req.GetSize() {
+				spec.Size = req.GetSize()
+			}
+		case api.VolumeSpecPolicy_Minimum:
+			if vol.GetSize() < req.GetSize() {
+				spec.Size = req.GetSize()
+			}
+		default:
+			// Equal
+			spec.Size = req.GetSize()
+		}
 	}
 
 	// ReplicaSet
@@ -623,11 +640,21 @@ func mergeVolumeSpecsPolicy(vol *api.VolumeSpec, req *api.VolumeSpecPolicy) *api
 	}
 
 	// HA Level
-	// validate if given HA Level is >= policyRepl level
-	if req.GetHaLevelOpt() != nil && req.GetHaLevel() >= vol.GetHaLevel() {
-		spec.HaLevel = req.GetHaLevel()
-	} else {
-		spec.HaLevel = vol.GetHaLevel()
+	spec.HaLevel = vol.GetHaLevel()
+	if req.GetHaLevelOpt() != nil {
+		switch req.GetHaLevelOperator() {
+		case api.VolumeSpecPolicy_Maximum:
+			if vol.GetHaLevel() > req.GetHaLevel() {
+				spec.HaLevel = req.GetHaLevel()
+			}
+		case api.VolumeSpecPolicy_Minimum:
+			if vol.GetHaLevel() < req.GetHaLevel() {
+				spec.HaLevel = req.GetHaLevel()
+			}
+		default:
+			// Equal
+			spec.HaLevel = req.GetHaLevel()
+		}
 	}
 
 	// Queue depth
