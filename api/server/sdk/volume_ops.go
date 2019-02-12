@@ -615,22 +615,24 @@ func mergeVolumeSpecsPolicy(vol *api.VolumeSpec, req *api.VolumeSpecPolicy) *api
 	}
 
 	// Size
-	spec.Size = vol.GetSize()
-	if req.GetSizeOpt() != nil {
-		switch req.GetSizeOperator() {
-		case api.VolumeSpecPolicy_Maximum:
-			if vol.GetSize() > req.GetSize() {
+	/*
+		spec.Size = vol.GetSize()
+		if req.GetSizeOpt() != nil {
+			switch req.GetSizeOperator() {
+			case api.VolumeSpecPolicy_Maximum:
+				if vol.GetSize() > req.GetSize() {
+					spec.Size = req.GetSize()
+				}
+			case api.VolumeSpecPolicy_Minimum:
+				if vol.GetSize() < req.GetSize() {
+					spec.Size = req.GetSize()
+				}
+			default:
+				// Equal
 				spec.Size = req.GetSize()
 			}
-		case api.VolumeSpecPolicy_Minimum:
-			if vol.GetSize() < req.GetSize() {
-				spec.Size = req.GetSize()
-			}
-		default:
-			// Equal
-			spec.Size = req.GetSize()
 		}
-	}
+	*/
 
 	// ReplicaSet
 	if req.GetReplicaSet() != nil {
@@ -641,21 +643,23 @@ func mergeVolumeSpecsPolicy(vol *api.VolumeSpec, req *api.VolumeSpecPolicy) *api
 
 	// HA Level
 	spec.HaLevel = vol.GetHaLevel()
-	if req.GetHaLevelOpt() != nil {
-		switch req.GetHaLevelOperator() {
-		case api.VolumeSpecPolicy_Maximum:
-			if vol.GetHaLevel() > req.GetHaLevel() {
+	/*
+		if req.GetHaLevelOpt() != nil {
+			switch req.GetHaLevelOperator() {
+			case api.VolumeSpecPolicy_Maximum:
+				if vol.GetHaLevel() > req.GetHaLevel() {
+					spec.HaLevel = req.GetHaLevel()
+				}
+			case api.VolumeSpecPolicy_Minimum:
+				if vol.GetHaLevel() < req.GetHaLevel() {
+					spec.HaLevel = req.GetHaLevel()
+				}
+			default:
+				// Equal
 				spec.HaLevel = req.GetHaLevel()
 			}
-		case api.VolumeSpecPolicy_Minimum:
-			if vol.GetHaLevel() < req.GetHaLevel() {
-				spec.HaLevel = req.GetHaLevel()
-			}
-		default:
-			// Equal
-			spec.HaLevel = req.GetHaLevel()
 		}
-	}
+	*/
 
 	// Queue depth
 	if req.GetQueueDepthOpt() != nil {

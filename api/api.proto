@@ -424,9 +424,9 @@ message VolumeSpecPolicy {
   // Aggregation level Specifies the number of parts the volume can be aggregated from.
   oneof aggregation_level_opt { uint32 aggregation_level = 27; }
   // Operator to check size
-  PolicyOp size_operator = 100;
+  //PolicyOp size_operator = 100;
   // Operator to check HaLevel
-  PolicyOp ha_level_operator = 101;
+  //PolicyOp ha_level_operator = 101;
 }
 
 // ReplicaSet set of machine IDs (nodes) to which part of this volume is erasure
