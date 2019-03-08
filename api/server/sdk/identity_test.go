@@ -24,6 +24,7 @@ import (
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -41,6 +42,52 @@ func expectCapability(
 	}
 
 	t.Errorf("Capability %s not found in %+v", expected, capabilities)
+}
+
+func AddMetadataToContext(ctx context.Context, k, v string) context.Context {
+	// You can also use the go-grpc-middleware/util/metautils utility functions
+	// which give you Get, Set, Add on top of metadata.
+	// But we will use the normal metadata api for simplicity:
+
+	// Doesn't matter if there was one there or not already,
+	// passing nil metadata to Join with a new one will do the
+	// right thing
+	md, _ := metadata.FromOutgoingContext(ctx)
+	md = metadata.Join(md, metadata.New(map[string]string{
+		k: v,
+	}))
+	return metadata.NewOutgoingContext(ctx, md)
+}
+
+func TestIdentityContextMetadata(t *testing.T) {
+	// Create server and client connection
+	s := newTestServer(t)
+	defer s.Stop()
+
+	// Setup mock
+	version := &api.StorageVersion{
+		Driver:  "mock",
+		Version: "1.2.4-asdf",
+	}
+	s.MockDriver().EXPECT().Version().Return(version, nil).Times(1)
+
+	// Create a connection
+	c := api.NewOpenStorageIdentityClient(s.Conn())
+
+	// setup context
+	ctx := AddMetadataToContext(context.Background(), "hello", "world")
+	ctx = AddMetadataToContext(ctx, "jay", "kay")
+	ctx = AddMetadataToContext(ctx, "one", "two")
+
+	r, err := c.Version(ctx, &api.SdkIdentityVersionRequest{})
+	assert.NoError(t, err)
+	assert.NotNil(t, r)
+
+	details := r.GetVersion().GetDetails()
+	assert.Len(t, details, 3)
+	assert.Equal(t, details["hello"], "world")
+	assert.Equal(t, details["jay"], "kay")
+	assert.Equal(t, details["one"], "two")
 }
 
 func TestIdentityCapabilities(t *testing.T) {

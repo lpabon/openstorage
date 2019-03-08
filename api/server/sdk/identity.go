@@ -24,6 +24,8 @@ import (
 	"github.com/libopenstorage/openstorage/volume"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 )
 
 // IdentityServer is an implementation of the gRPC OpenStorageIdentityServer interface
@@ -174,6 +176,20 @@ func (s *IdentityServer) Version(
 			)
 		}
 	}
+
+	// Get metadata and save it as part of the storage verion details
+	// for debugging. XXX REMOVE THIS CODE XXX
+	// Use the go-grpc-middleware/util/metautils utility functions
+	// They can be used also to create metadata if needed.
+	niceMd := metautils.ExtractIncoming(ctx)
+
+	// You have to know what you are looking for, cannot traverse like a map.
+	if version.Details == nil {
+		version.Details = make(map[string]string)
+	}
+	version.Details["hello"] = niceMd.Get("hello")
+	version.Details["jay"] = niceMd.Get("jay")
+	version.Details["one"] = niceMd.Get("one")
 
 	sdkVersion := &api.SdkVersion{
 		Major: int32(api.SdkVersion_Major),
