@@ -11,17 +11,42 @@ import (
 func (vd *volAPI) credsEnumerate(w http.ResponseWriter, r *http.Request) {
 	method := "credsEnumerate"
 
-	d, err := vd.getVolDriver(r)
+	// Get context with auth token
+	ctx, err := vd.annotateContext(r)
 	if err != nil {
-		notFound(w, r)
+		vd.sendError(vd.name, method, w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	creds, err := d.CredsEnumerate()
+	// Get gRPC connection
+	conn, err := vd.getConn()
 	if err != nil {
 		vd.sendError(vd.name, method, w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	credentials := api.NewOpenStorageCredentialsClient(conn)
+
+	// This returns which of the credentials the caller has access to.
+	resp, err := credentials.Enumerate(ctx, &api.SdkCredentialEnumerateRequest{})
+	if err != nil {
+		vd.sendError(vd.name, method, w, err.Error(), http.StatusInternalServerError)
+	}
+
+	// Now get all the the creds and their data
+	allcreds, err := d.CredsEnumerate()
+	if err != nil {
+		vd.sendError(vd.name, method, w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// We cannot return an SDK object in this call (long story). Instead,
+	// use these keys as the method to return the data from the golang API.
+	creds := make(map[string]interface{})
+	for _, credid := range resp.GetCredentialIds() {
+		creds[credid] = allcreds[credid]
+	}
+
 	json.NewEncoder(w).Encode(creds)
 }
 
