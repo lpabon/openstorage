@@ -80,6 +80,7 @@ func (s *OsdCsiServer) NodePublishVolume(
 
 	// Get secret if any was passed
 	ctx = s.setupContextWithToken(ctx, req.GetSecrets())
+	ctx = s.setContextWithDriverName(ctx)
 
 	// Check if block device
 	driverType := s.driver.Type()

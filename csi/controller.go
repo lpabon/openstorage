@@ -123,6 +123,7 @@ func (s *OsdCsiServer) ValidateVolumeCapabilities(
 
 	// Get secret if any was passed
 	ctx = s.setupContextWithToken(ctx, req.GetSecrets())
+	ctx = s.setContextWithDriverName(ctx)
 
 	// Check ID is valid with the specified volume capabilities
 	volumes := api.NewOpenStorageVolumeClient(conn)
@@ -283,6 +284,7 @@ func (s *OsdCsiServer) CreateVolume(
 
 	// Get secret if any was passed
 	ctx = s.setupContextWithToken(ctx, req.GetSecrets())
+	ctx = s.setContextWithDriverName(ctx)
 
 	// Check ID is valid with the specified volume capabilities
 	volumes := api.NewOpenStorageVolumeClient(conn)
@@ -353,6 +355,7 @@ func (s *OsdCsiServer) DeleteVolume(
 
 	// Get secret if any was passed
 	ctx = s.setupContextWithToken(ctx, req.GetSecrets())
+	ctx = s.setContextWithDriverName(ctx)
 
 	// Check ID is valid with the specified volume capabilities
 	volumes := api.NewOpenStorageVolumeClient(conn)
@@ -411,6 +414,7 @@ func (s *OsdCsiServer) CreateSnapshot(
 
 	// Get secret if any was passed
 	ctx = s.setupContextWithToken(ctx, req.GetSecrets())
+	ctx = s.setContextWithDriverName(ctx)
 
 	// Check ID is valid with the specified volume capabilities
 	volumes := api.NewOpenStorageVolumeClient(conn)
@@ -488,6 +492,7 @@ func (s *OsdCsiServer) DeleteSnapshot(
 
 	// Get secret if any was passed
 	ctx = s.setupContextWithToken(ctx, req.GetSecrets())
+	ctx = s.setContextWithDriverName(ctx)
 
 	// Check ID is valid with the specified volume capabilities
 	volumes := api.NewOpenStorageVolumeClient(conn)

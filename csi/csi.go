@@ -23,8 +23,8 @@ import (
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 
+	"github.com/libopenstorage/openstorage/api/server/sdk"
 	"github.com/libopenstorage/openstorage/api/spec"
 	"github.com/libopenstorage/openstorage/cluster"
 	authsecrets "github.com/libopenstorage/openstorage/pkg/auth/secrets"
@@ -116,12 +116,14 @@ func (s *OsdCsiServer) getConn() (*grpc.ClientConn, error) {
 // the contents of a K8S Secret map into the Secrets section of the CSI call.
 func (s *OsdCsiServer) setupContextWithToken(ctx context.Context, csiSecrets map[string]string) context.Context {
 	if token, ok := csiSecrets[authsecrets.SecretTokenKey]; ok {
-		md := metadata.New(map[string]string{
-			"authorization": "bearer " + token,
-		})
-		return metadata.NewOutgoingContext(ctx, md)
+		return grpcserver.AddMetadataToContext(ctx, "authorization", "bearer "+token)
 	}
 	return ctx
+}
+
+// Return a context with the driver name set
+func (s *OsdCsiServer) setContextWithDriverName(ctx context.Context) context.Context {
+	return grpcserver.AddMetadataToContext(ctx, sdk.ContextDriverKey, s.driver.Name())
 }
 
 // Start is used to start the server.
