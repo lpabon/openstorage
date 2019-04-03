@@ -227,9 +227,14 @@ type ProtoDriver interface {
 
 // Enumerator provides a set of interfaces to get details on a set of volumes.
 type Enumerator interface {
-	// Inspect specified volumes.
+	// Inspect is the same as InspectWithOptions with the following default values set:
+	//   deep: true
 	// Returns slice of volumes that were found.
 	Inspect(volumeIDs []string) ([]*api.Volume, error)
+	// InspectWithOptions inspects a specified set of volumes.
+	// Returns slice of volumes that were found.
+	// Passing nil for options is not supported.
+	InspectWithOptions(volumeIDs []string, options *api.VolumeInspectOptions) ([]*api.Volume, error)
 	// Enumerate volumes that map to the volumeLocator. Locator fields may be regexp.
 	// If locator fields are left blank, this will return all volumes.
 	Enumerate(locator *api.VolumeLocator, labels map[string]string) ([]*api.Volume, error)

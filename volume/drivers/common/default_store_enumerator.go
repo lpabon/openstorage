@@ -66,9 +66,8 @@ func (e *defaultStoreEnumerator) DeleteVol(volumeID string) error {
 	return err
 }
 
-// Inspect specified volumes.
-// Returns slice of volumes that were found.
-func (e *defaultStoreEnumerator) Inspect(ids []string) ([]*api.Volume, error) {
+// InspectWithOptions inspects a specified set of volumes.
+func (e *defaultStoreEnumerator) InspectWithOptions(ids []string, options *api.VolumeInspectOptions) ([]*api.Volume, error) {
 	volumes := make([]*api.Volume, 0, len(ids))
 	for _, id := range ids {
 		volume, err := e.GetVol(id)
@@ -79,6 +78,12 @@ func (e *defaultStoreEnumerator) Inspect(ids []string) ([]*api.Volume, error) {
 		volumes = append(volumes, volume)
 	}
 	return volumes, nil
+}
+
+// Inspect specified volumes.
+// Returns slice of volumes that were found.
+func (e *defaultStoreEnumerator) Inspect(ids []string) ([]*api.Volume, error) {
+	return e.InspectWithOptions(ids, &api.VolumeInspectOptions{})
 }
 
 // Enumerate volumes that map to the volumeLocator. Locator fields may be regexp.
