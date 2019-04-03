@@ -237,6 +237,13 @@ message VolumeLocator {
   Group group = 4;
 }
 
+// Options used for volume inspection
+message VolumeInspectOptions {
+  // Deep inspection is used to collect more information about
+  // the volume. Setting this value may delay the request.
+  bool deep = 1;
+}
+
 // Source is a structure that can be given to a volume
 // to seed the volume with data.
 message Source {
@@ -1341,6 +1348,18 @@ service OpenStorageVolume {
       };
     }
 
+  // Returns information for a list of volumes.
+  // This call is like `OpenStorageVolume.Inspect()`
+  // but it takes a list of volume ids and returns
+  // their information
+  rpc InspectList(SdkVolumeInspectListRequest)
+    returns (SdkVolumeInspectListResponse) {
+      option(google.api.http) = {
+        post: "/v1/volumes/inspectlist"
+        body: "*"
+      };
+    }
+
   // Update provides a method for manipulating the specification and attributes of a volume.
   // Set can be used to resize a volume, update labels, change replica count, and much more.
   //
@@ -2401,6 +2420,8 @@ message SdkVolumeDeleteResponse {
 message SdkVolumeInspectRequest {
   // Id of volume to inspect
   string volume_id = 1;
+  // Options during inspection
+  VolumeInspectOptions options = 2;
 }
 
 // Defines the response when inspecting a volume
@@ -2411,6 +2432,20 @@ message SdkVolumeInspectResponse {
   string name = 2;
   // Volume labels
   map<string, string> labels = 3;
+}
+
+// Defines the request to inspect a list of volumes
+message SdkVolumeInspectListRequest {
+  // List of volume ids
+  repeated string volume_ids = 1;
+  // Options during inspection
+  VolumeInspectOptions options = 2;
+}
+
+// Defines the response when inspecting a list of volumes
+message SdkVolumeInspectListResponse {
+  // List of `SdkVolumeInspectResponse` objects describing the volume
+  repeated SdkVolumeInspectResponse volumes = 1;
 }
 
 // This request is used to adjust or set new values in the volume
@@ -3213,7 +3248,7 @@ message SdkVersion {
     // SDK version minor value of this specification
     Minor = 42;
     // SDK version patch value of this specification
-    Patch = 8;
+    Patch = 9;
   }
 
   // The following cannot be set to use the enum Version because the REST

@@ -583,7 +583,12 @@ func (vd *volAPI) inspect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	volumes := api.NewOpenStorageVolumeClient(conn)
-	dk, err := volumes.Inspect(ctx, &api.SdkVolumeInspectRequest{VolumeId: volumeID})
+	dk, err := volumes.Inspect(ctx, &api.SdkVolumeInspectRequest{
+		VolumeId: volumeID,
+		Options: &api.VolumeInspectOptions{
+			Deep: true,
+		},
+	})
 	dkVolumes := []*api.Volume{}
 	if err != nil {
 		// SDK returns a NotFound error for an invalid volume
@@ -750,32 +755,41 @@ func (vd *volAPI) enumerate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	v = params[string(api.OptVolumeID)]
+	var deepInspect bool
 	if v != nil {
+		deepInspect = true
 		ids = make([]string, len(v))
 		for i, s := range v {
 			ids[i] = string(s)
 		}
-	} else {
+	} else if len(locator.Name) != 0 || len(locator.VolumeLabels) != 0 {
 		vls, err := volumes.EnumerateWithFilters(ctx, &api.SdkVolumeEnumerateWithFiltersRequest{
 			Name:   locator.Name,
 			Labels: locator.VolumeLabels,
 		})
-
-		//vols, err = d.Enumerate(&locator, configLabels)
 		if err != nil {
 			vd.sendError(vd.name, method, w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		ids = vls.GetVolumeIds()
+		if len(ids) == 0 {
+			// No ids found
+			json.NewEncoder(w).Encode([]*api.Volume{})
+			return
+		}
 	}
 
 	vols = make([]*api.Volume, 0)
-	for _, s := range ids {
-		vol, err := volumes.Inspect(ctx, &api.SdkVolumeInspectRequest{VolumeId: s})
-		if err == nil {
-			vols = append(vols, vol.GetVolume())
-		}
+	resp, err := volumes.InspectList(ctx, &api.SdkVolumeInspectListRequest{
+		VolumeIds: ids,
+		Options: &api.VolumeInspectOptions{
+			Deep: deepInspect,
+		},
+	})
+	for _, r := range resp.GetVolumes() {
+		vols = append(vols, r.GetVolume())
 	}
+
 	json.NewEncoder(w).Encode(vols)
 }
 

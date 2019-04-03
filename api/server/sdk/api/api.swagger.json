@@ -2362,6 +2362,35 @@
         "title": "Defines the response when listing volumes",
         "type": "object"
       },
+      "apiSdkVolumeInspectListRequest": {
+        "properties": {
+          "options": {
+            "$ref": "#/components/schemas/apiVolumeInspectOptions"
+          },
+          "volume_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "List of volume ids",
+            "type": "array"
+          }
+        },
+        "title": "Defines the request to inspect a list of volumes",
+        "type": "object"
+      },
+      "apiSdkVolumeInspectListResponse": {
+        "properties": {
+          "volumes": {
+            "items": {
+              "$ref": "#/components/schemas/apiSdkVolumeInspectResponse"
+            },
+            "title": "List of `SdkVolumeInspectResponse` objects describing the volume",
+            "type": "array"
+          }
+        },
+        "title": "Defines the response when inspecting a list of volumes",
+        "type": "object"
+      },
       "apiSdkVolumeInspectResponse": {
         "properties": {
           "labels": {
@@ -3052,6 +3081,17 @@
         "title": "VolumeConsumer identifies a consumer for a Volume. An example of a VolumeConsumer\nwould be a Pod in Kubernetes who has mounted the PersistentVolumeClaim for the\nVolume",
         "type": "object"
       },
+      "apiVolumeInspectOptions": {
+        "properties": {
+          "deep": {
+            "description": "Deep inspection is used to collect more information about\nthe volume. Setting this value may delay the request.",
+            "format": "boolean",
+            "type": "boolean"
+          }
+        },
+        "title": "Options used for volume inspection",
+        "type": "object"
+      },
       "apiVolumeLocator": {
         "description": "VolumeLocator is a structure that is attached to a volume\nand is used to carry opaque metadata.",
         "properties": {
@@ -3495,7 +3535,7 @@
   },
   "info": {
     "title": "OpenStorage SDK",
-    "version": "0.42.8"
+    "version": "0.42.9"
   },
   "openapi": "3.0.0",
   "paths": {
@@ -5503,6 +5543,16 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Deep inspection is used to collect more information about\nthe volume. Setting this value may delay the request.",
+            "in": "query",
+            "name": "options.deep",
+            "required": false,
+            "schema": {
+              "format": "boolean",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -5518,6 +5568,37 @@
           }
         },
         "summary": "Inspect returns information about a volume",
+        "tags": [
+          "OpenStorageVolume"
+        ]
+      }
+    },
+    "/v1/volumes/inspectlist": {
+      "post": {
+        "operationId": "InspectList",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/apiSdkVolumeInspectListRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/apiSdkVolumeInspectListResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Returns information for a list of volumes.\nThis call is like `OpenStorageVolume.Inspect()`\nbut it takes a list of volume ids and returns\ntheir information",
         "tags": [
           "OpenStorageVolume"
         ]
