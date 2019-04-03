@@ -284,6 +284,14 @@ func (s *VolumeServer) Delete(
 	return &api.SdkVolumeDeleteResponse{}, nil
 }
 
+// InspectList returns a list of inspects
+func (s *VolumeServer) InspectList(
+	ctx context.Context,
+	req *api.SdkVolumeInspectListRequest,
+) (*api.SdkVolumeInspectListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Resource not implemeneted")
+}
+
 // Inspect returns information about a volume
 func (s *VolumeServer) Inspect(
 	ctx context.Context,
