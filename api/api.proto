@@ -1339,6 +1339,17 @@ service OpenStorageVolume {
       };
     }
 
+  // Returns information for a list of volumes.
+  // This call is like `Inspect()` but it takes a
+  // list of volume ids and returns their information
+  rpc InspectList(SdkVolumeInspectListRequest)
+    returns (SdkVolumeInspectListResponse) {
+      option(google.api.http) = {
+        post: "/v1/volumes/inspectlist"
+        body: "*"
+      };
+    }
+
   // Update provides a method for manipulating the specification and attributes of a volume.
   // Set can be used to resize a volume, update labels, change replica count, and much more.
   //
@@ -2399,6 +2410,9 @@ message SdkVolumeDeleteResponse {
 message SdkVolumeInspectRequest {
   // Id of volume to inspect
   string volume_id = 1;
+  // Deep inspection is used to collect more information about
+  // the volume. Setting this value may delay the request.
+  bool deep = 2;
 }
 
 // Defines the response when inspecting a volume
@@ -2409,6 +2423,23 @@ message SdkVolumeInspectResponse {
   string name = 2;
   // Volume labels
   map<string, string> labels = 3;
+}
+
+// Defines the request to inspect a list of volumes
+message SdkVolumeInspectListRequest {
+  // List of volume ids
+  repeated string volume_ids = 1;
+  // Deep inspection is used to collect more information about
+  // the volume. Setting this value may delay the request.
+  bool deep = 2;
+}
+
+// Defines the response when inspecting a list of volumes
+message SdkVolumeInspectListResponse {
+  // Map of information about the volumes where the key
+  // is the id of the volume and the value is a
+  // `SdkVolumeInspectResponse` object describing the volume
+  map<string, SdkVolumeInspectResponse> volumes = 1;
 }
 
 // This request is used to adjust or set new values in the volume
@@ -3205,7 +3236,7 @@ message SdkVersion {
     // SDK version major value of this specification
     Major = 0;
     // SDK version minor value of this specification
-    Minor = 47;
+    Minor = 48;
     // SDK version patch value of this specification
     Patch = 0;
   }
