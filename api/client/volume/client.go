@@ -144,9 +144,24 @@ func (v *volumeClient) Status() [][2]string {
 	return [][2]string{}
 }
 
-// InspectWithOptions is not supported in this client. Use the SDK instead.
-func (v *volumeClient) InspectWithOptions(volumeIDs []string, options *api.VolumeInspectOptions) ([]*api.Volume, error) {
-	return nil, fmt.Errorf("This client does not support InspectWithOptions. Use the SDK instead")
+// InspectWithOptions
+func (v *volumeClient) InspectWithOptions(ids []string, options *api.VolumeInspectOptions) ([]*api.Volume, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var volumes []*api.Volume
+	request := &api.SdkVolumeInspectListRequest{
+		VolumeIds: ids,
+		Options:   options,
+	}
+	req := v.c.Post().Resource(volumePath /* XXX */).Body(request)
+	for _, id := range ids {
+		request.QueryOption(api.OptVolumeID, id)
+	}
+	if err := request.Do().Unmarshal(&volumes); err != nil {
+		return nil, err
+	}
+	return volumes, nil
 }
 
 // Inspect specified volumes.

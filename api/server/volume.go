@@ -548,6 +548,49 @@ func getVolumeUpdateSpec(spec *api.VolumeSpec, vol *api.Volume) *api.VolumeSpecU
 	return newSpec
 }
 
+// Inspect with options
+func (vd *volAPI) inspect(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var volumeID string
+
+	method := "inspect"
+
+	if volumeID, err = vd.parseID(r); err != nil {
+		e := fmt.Errorf("Failed to parse parse volumeID: %s", err.Error())
+		vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Get context with auth token
+	ctx, err := vd.annotateContext(r)
+	if err != nil {
+		vd.sendError(vd.name, method, w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Get gRPC connection
+	conn, err := vd.getConn()
+	if err != nil {
+		vd.sendError(vd.name, method, w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	volumes := api.NewOpenStorageVolumeClient(conn)
+	dk, err := volumes.Inspect(ctx, &api.SdkVolumeInspectRequest{VolumeId: volumeID})
+	dkVolumes := []*api.Volume{}
+	if err != nil {
+		// SDK returns a NotFound error for an invalid volume
+		// Previously the REST server returned an empty array if a volume was not found
+		if s, ok := status.FromError(err); ok && s.Code() != codes.NotFound {
+			vd.sendError(vd.name, method, w, err.Error(), http.StatusNotFound)
+			return
+		}
+	} else {
+		dkVolumes = append(dkVolumes, dk.GetVolume())
+	}
+
+	json.NewEncoder(w).Encode(dkVolumes)
+}
+
 // swagger:operation GET /osd-volumes/{id} volume inspectVolume
 //
 // Inspect volume with specified id.
@@ -1592,6 +1635,7 @@ func (vd *volAPI) volumeSetRoute() *Route {
 
 func (vd *volAPI) volumeInspectRoute() *Route {
 	return &Route{verb: "GET", path: volPath("/{id}", volume.APIVersion), fn: vd.inspect}
+	return &Route{verb: "POST", path: volPath("/inspectoptions", volume.APIVersion), fn: vd.inspectoptions}
 }
 
 func (vd *volAPI) otherVolumeRoutes() []*Route {
