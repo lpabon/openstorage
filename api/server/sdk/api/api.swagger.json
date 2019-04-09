@@ -2377,11 +2377,11 @@
       "apiSdkVolumeInspectListResponse": {
         "properties": {
           "volumes": {
-            "additionalProperties": {
+            "items": {
               "$ref": "#/components/schemas/apiSdkVolumeInspectResponse"
             },
-            "title": "Map of information about the volumes where the key\nis the id of the volume and the value is a\n`SdkVolumeInspectResponse` object describing the volume",
-            "type": "object"
+            "title": "List of `SdkVolumeInspectResponse` objects describing the volume",
+            "type": "array"
           }
         },
         "title": "Defines the response when inspecting a list of volumes",
@@ -5594,7 +5594,7 @@
             "description": ""
           }
         },
-        "summary": "Returns information for a list of volumes.\nThis call is like `Inspect()` but it takes a\nlist of volume ids and returns their information",
+        "summary": "Returns information for a list of volumes.\nThis call is like `OpenStorageVolume.Inspect()`\nbut it takes a list of volume ids and returns\ntheir information",
         "tags": [
           "OpenStorageVolume"
         ]

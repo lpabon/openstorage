@@ -1349,8 +1349,9 @@ service OpenStorageVolume {
     }
 
   // Returns information for a list of volumes.
-  // This call is like `Inspect()` but it takes a
-  // list of volume ids and returns their information
+  // This call is like `OpenStorageVolume.Inspect()`
+  // but it takes a list of volume ids and returns
+  // their information
   rpc InspectList(SdkVolumeInspectListRequest)
     returns (SdkVolumeInspectListResponse) {
       option(google.api.http) = {
@@ -2443,10 +2444,8 @@ message SdkVolumeInspectListRequest {
 
 // Defines the response when inspecting a list of volumes
 message SdkVolumeInspectListResponse {
-  // Map of information about the volumes where the key
-  // is the id of the volume and the value is a
-  // `SdkVolumeInspectResponse` object describing the volume
-  map<string, SdkVolumeInspectResponse> volumes = 1;
+  // List of `SdkVolumeInspectResponse` objects describing the volume
+  repeated SdkVolumeInspectResponse volumes = 1;
 }
 
 // This request is used to adjust or set new values in the volume

@@ -289,7 +289,61 @@ func (s *VolumeServer) InspectList(
 	ctx context.Context,
 	req *api.SdkVolumeInspectListRequest,
 ) (*api.SdkVolumeInspectListResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Resource not implemeneted")
+	if s.cluster() == nil || s.driver(ctx) == nil {
+		return nil, status.Error(codes.Unavailable, "Resource has not been initialized")
+	}
+	// If no volumes ids where requested, return a list of all
+
+	var vols []*api.SdkVolumeInspectResponse
+	if !req.GetOptions().GetDeep() {
+		allvols, err := s.driver(ctx).Enumerate(nil, nil)
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Internal,
+				"Failed to get information about volumes: %s", err)
+		}
+		vols = make([]*api.SdkVolumeInspectResponse, 0, len(allvols))
+
+		for _, vol := range allvols {
+			var v *api.Volume
+			if len(req.GetVolumeIds()) == 0 {
+				v = vol
+			} else {
+				for _, id := range req.GetVolumeIds() {
+					if id == vol.GetId() {
+						v = vol
+						break
+					}
+				}
+			}
+			if v == nil {
+				continue
+			}
+			if v.IsPermitted(ctx, api.Ownership_Read) {
+				vols = append(vols, &api.SdkVolumeInspectResponse{
+					Volume: v,
+					Name:   v.GetLocator().GetName(),
+					Labels: v.GetLocator().GetVolumeLabels(),
+				})
+			}
+		}
+	} else {
+		// Do a deep inspect of each
+		vols = make([]*api.SdkVolumeInspectResponse, 0, len(req.GetVolumeIds()))
+		for _, id := range req.GetVolumeIds() {
+			resp, err := s.Inspect(ctx, &api.SdkVolumeInspectRequest{
+				VolumeId: id,
+				Options:  req.GetOptions(),
+			})
+			if err == nil {
+				vols = append(vols, resp)
+			}
+		}
+	}
+
+	return &api.SdkVolumeInspectListResponse{
+		Volumes: vols,
+	}, nil
 }
 
 // Inspect returns information about a volume
@@ -305,19 +359,43 @@ func (s *VolumeServer) Inspect(
 		return nil, status.Error(codes.InvalidArgument, "Must supply volume id")
 	}
 
-	vols, err := s.driver(ctx).Inspect([]string{req.GetVolumeId()})
-	if err == kvdb.ErrNotFound || (err == nil && len(vols) == 0) {
-		return nil, status.Errorf(
-			codes.NotFound,
-			"Volume id %s not found",
-			req.GetVolumeId())
-	} else if err != nil {
-		return nil, status.Errorf(
-			codes.Internal,
-			"Failed to inspect volume %s: %v",
-			req.GetVolumeId(), err)
+	var v *api.Volume
+	if !req.GetOptions().GetDeep() {
+		vols, err := s.driver(ctx).Enumerate(nil, nil)
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Internal,
+				"Failed to inspect volume %s: %v",
+				req.GetVolumeId(), err)
+		}
+
+		for _, vol := range vols {
+			if vol.GetId() == req.GetVolumeId() {
+				v = vol
+				break
+			}
+		}
+		if v == nil {
+			return nil, status.Errorf(
+				codes.NotFound,
+				"Volume id %s not found",
+				req.GetVolumeId())
+		}
+	} else {
+		vols, err := s.driver(ctx).Inspect([]string{req.GetVolumeId()})
+		if err == kvdb.ErrNotFound || (err == nil && len(vols) == 0) {
+			return nil, status.Errorf(
+				codes.NotFound,
+				"Volume id %s not found",
+				req.GetVolumeId())
+		} else if err != nil {
+			return nil, status.Errorf(
+				codes.Internal,
+				"Failed to inspect volume %s: %v",
+				req.GetVolumeId(), err)
+		}
+		v = vols[0]
 	}
-	v := vols[0]
 
 	// Check ownership
 	if !v.IsPermitted(ctx, api.Ownership_Read) {
