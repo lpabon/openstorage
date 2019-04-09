@@ -786,6 +786,10 @@ func (vd *volAPI) enumerate(w http.ResponseWriter, r *http.Request) {
 			Deep: deepInspect,
 		},
 	})
+	if err != nil {
+		vd.sendError(vd.name, method, w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	for _, r := range resp.GetVolumes() {
 		vols = append(vols, r.GetVolume())
 	}

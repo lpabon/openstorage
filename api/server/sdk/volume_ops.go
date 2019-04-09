@@ -335,9 +335,12 @@ func (s *VolumeServer) InspectList(
 				VolumeId: id,
 				Options:  req.GetOptions(),
 			})
-			if err == nil {
-				vols = append(vols, resp)
+			if IsErrorNotFound(err) {
+				continue
+			} else if err != nil {
+				return nil, err
 			}
+			vols = append(vols, resp)
 		}
 	}
 
