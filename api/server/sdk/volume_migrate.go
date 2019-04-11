@@ -63,6 +63,10 @@ func (s *VolumeServer) Start(
 }
 
 func (s *VolumeServer) haveOwnership(ctx context.Context, labels map[string]string, locator *api.VolumeLocator) bool {
+	if !s.server().isSecurityEnabled() {
+		return true
+	}
+
 	// checking if driver is initialized happens in Start
 	vols, err := s.driver(ctx).Enumerate(locator, labels)
 	if err != nil {

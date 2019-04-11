@@ -121,6 +121,7 @@ type Server struct {
 }
 
 type serverAccessor interface {
+	isSecurityEnabled() bool
 	alert() alerts.FilterDeleter
 	cluster() cluster.Cluster
 	driver(ctx context.Context) volume.VolumeDriver
@@ -291,6 +292,11 @@ func (s *Server) UseAlert(a alerts.FilterDeleter) {
 	s.udsServer.useAlert(a)
 }
 
+// IsSecurityEnabled returns true if auth has been enabled
+func (s *Server) IsSecurityEnabled() bool {
+	s.netServer.isSecurityEnabled()
+}
+
 // New creates a new SDK gRPC server
 func newSdkGrpcServer(config *ServerConfig) (*sdkGrpcServer, error) {
 	if nil == config {
@@ -413,7 +419,7 @@ func (s *sdkGrpcServer) Start() error {
 	}
 
 	// Setup authentication and authorization using interceptors if auth is enabled
-	if len(s.config.Security.Authenticators) != 0 {
+	if s.isSecurityEnabled() {
 		opts = append(opts, grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				s.rwlockIntercepter,
@@ -482,6 +488,10 @@ func (s *sdkGrpcServer) useAlert(a alerts.FilterDeleter) {
 }
 
 // Accessors
+func (s *sdkGrpcServer) isSecurityEnabled() bool {
+	return len(s.config.Security.Authenticators) != 0
+}
+
 func (s *sdkGrpcServer) driver(ctx context.Context) volume.VolumeDriver {
 	driverName := grpcserver.GetMetadataValueFromKey(ctx, ContextDriverKey)
 	if handler, ok := s.driverHandlers[driverName]; ok {

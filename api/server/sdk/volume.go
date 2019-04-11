@@ -50,6 +50,10 @@ func (s *VolumeServer) checkAccessForVolumeId(
 	volumeId string,
 	accessType api.Ownership_AccessType,
 ) error {
+	if !s.server().isSecurityEnabled() {
+		return nil
+	}
+
 	// Inspect will check access for us
 	resp, err := s.Inspect(ctx, &api.SdkVolumeInspectRequest{
 		VolumeId: volumeId,
