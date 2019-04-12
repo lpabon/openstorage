@@ -43,11 +43,6 @@ func (s *VolumeServer) create(
 	volName := locator.GetName()
 	v, err := util.VolumeFromName(s.driver(ctx), volName)
 	if err == nil {
-		// Check ownership
-		if !v.IsPermitted(ctx, api.Ownership_Admin) {
-			return "", status.Errorf(codes.PermissionDenied, "Volume %s already exists and is owned by another user", volName)
-		}
-
 		// Check the requested arguments match that of the existing volume
 		if v.GetSpec().GetSize() != spec.GetSize() {
 			return "", status.Errorf(
@@ -65,6 +60,11 @@ func (s *VolumeServer) create(
 		}
 		if v.GetSource().GetParent() != source.GetParent() {
 			return "", status.Error(codes.AlreadyExists, "Existing volume has conflicting parent value")
+		}
+
+		// Check ownership
+		if !v.IsPermitted(ctx, api.Ownership_Admin) {
+			return "", status.Errorf(codes.PermissionDenied, "Volume %s already exists and is owned by another user", v.GetId())
 		}
 
 		// Return information on existing volume
@@ -358,39 +358,19 @@ func (s *VolumeServer) Inspect(
 		return nil, status.Error(codes.InvalidArgument, "Must supply volume id")
 	}
 
-	var v *api.Volume
-	if !req.GetOptions().GetDeep() {
-		vols, err := s.driver(ctx).Enumerate(&api.VolumeLocator{
-			VolumeIds: []string{req.GetVolumeId()},
-		}, nil)
-		if err != nil {
-			return nil, status.Errorf(
-				codes.Internal,
-				"Failed to inspect volume %s: %v",
-				req.GetVolumeId(), err)
-		}
-		if len(vols) == 0 {
-			return nil, status.Errorf(
-				codes.NotFound,
-				"Volume id %s not found",
-				req.GetVolumeId())
-		}
-		v = vols[0]
-	} else {
-		vols, err := s.driver(ctx).Inspect([]string{req.GetVolumeId()})
-		if err == kvdb.ErrNotFound || (err == nil && len(vols) == 0) {
-			return nil, status.Errorf(
-				codes.NotFound,
-				"Volume id %s not found",
-				req.GetVolumeId())
-		} else if err != nil {
-			return nil, status.Errorf(
-				codes.Internal,
-				"Failed to inspect volume %s: %v",
-				req.GetVolumeId(), err)
-		}
-		v = vols[0]
+	vols, err := s.driver(ctx).Inspect(ctx, []string{req.GetVolumeId()}, options)
+	if err == kvdb.ErrNotFound || (err == nil && len(vols) == 0) {
+		return nil, status.Errorf(
+			codes.NotFound,
+			"Volume id %s not found",
+			req.GetVolumeId())
+	} else if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			"Failed to inspect volume %s: %v",
+			req.GetVolumeId(), err)
 	}
+	v := vols[0]
 
 	// Check ownership
 	if !v.IsPermitted(ctx, api.Ownership_Read) {
@@ -959,7 +939,7 @@ func mergeVolumeSpecsPolicy(vol *api.VolumeSpec, req *api.VolumeSpecPolicy, isVa
 		}
 		spec.IoStrategy = req.GetIoStrategy()
 	}
-	logrus.Debugf("Updated VolumeSpecs %v", spec)
+	logrus.Debug("Updated VolumeSpecs %v", spec)
 	return spec, nil
 }
 

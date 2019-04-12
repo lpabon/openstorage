@@ -235,8 +235,6 @@ message VolumeLocator {
   Ownership ownership = 3;
   // Filter by group
   Group group = 4;
-  // Volume Ids to match
-  repeated string volume_ids = 5;
 }
 
 // Options used for volume inspection

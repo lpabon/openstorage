@@ -1,6 +1,7 @@
 package volume
 
 import (
+	"context"
 	"errors"
 
 	"github.com/libopenstorage/openstorage/api"
@@ -229,7 +230,7 @@ type ProtoDriver interface {
 type Enumerator interface {
 	// Inspect specified volumes.
 	// Returns slice of volumes that were found.
-	Inspect(volumeIDs []string) ([]*api.Volume, error)
+	Inspect(ctx context.Context, volumeIDs []string, options *api.VolumeInspectOptions) ([]*api.Volume, error)
 	// Enumerate volumes that map to the volumeLocator. Locator fields may be regexp.
 	// If locator fields are left blank, this will return all volumes.
 	Enumerate(locator *api.VolumeLocator, labels map[string]string) ([]*api.Volume, error)

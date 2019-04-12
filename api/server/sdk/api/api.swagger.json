@@ -3115,13 +3115,6 @@
           "ownership": {
             "$ref": "#/components/schemas/apiOwnership"
           },
-          "volume_ids": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Volume Ids to match",
-            "type": "array"
-          },
           "volume_labels": {
             "additionalProperties": {
               "type": "string"
