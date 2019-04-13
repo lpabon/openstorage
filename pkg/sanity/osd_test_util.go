@@ -17,6 +17,7 @@ limitations under the License.
 package sanity
 
 import (
+	"context"
 	"math/rand"
 	"time"
 
@@ -53,7 +54,7 @@ func testIfVolumeCreatedSuccessfully(
 	By("Inspecting the created volume")
 
 	inspectVolumes := []string{volumeID}
-	volumesList, err := volumedriver.Inspect(inspectVolumes)
+	volumesList, err := volumedriver.Inspect(context.Background(), inspectVolumes, &api.VolumeInspectOptions{})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(volumesList).NotTo(BeEmpty())
 	Expect(len(volumesList)).Should(BeEquivalentTo(1))

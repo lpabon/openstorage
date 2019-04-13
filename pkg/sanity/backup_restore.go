@@ -17,6 +17,7 @@ limitations under the License.
 package sanity
 
 import (
+	"context"
 	"time"
 
 	"github.com/libopenstorage/openstorage/api"
@@ -445,7 +446,7 @@ var _ = Describe("Volume [Backup Restore Tests]", func() {
 
 				By("Inspecting the restored volume")
 
-				volumes, err := volumedriver.Inspect([]string{bkpRestoreResp.RestoreVolumeID})
+				volumes, err := volumedriver.Inspect(context.Background(), []string{bkpRestoreResp.RestoreVolumeID}, &api.VolumeInspectOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(volumes)).To(BeEquivalentTo(1))
 				Expect(volumes[0].Locator.Name).To(BeEquivalentTo(restoredVolume))

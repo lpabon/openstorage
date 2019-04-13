@@ -551,7 +551,7 @@ func TestVolumeInspectFailed(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, id)
 
-	res, err := driverclient.Inspect([]string{"myid"})
+	res, err := driverclient.Inspect(context.Background(), []string{"myid"}, &api.VolumeInspectOptions{})
 	assert.Nil(t, err)
 	assert.Equal(t, len(res), 0)
 
