@@ -18,7 +18,10 @@ package sdk
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"mime"
 	"net/http"
 
@@ -66,6 +69,21 @@ func (s *sdkRestGateway) Start() error {
 		ready <- true
 		var err error
 		if s.config.Security.Tls != nil {
+			// https://venilnoronha.io/a-step-by-step-guide-to-mtls-in-go
+			caCert, err := ioutil.ReadFile(s.config.Security.Tls.CertFile)
+			if err != nil {
+				logrus.Fatalf("Unable to read %s: %v", s.config.Security.Tls.CertFile, err)
+			}
+
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+			tlsConfig := &tls.Config{
+				ClientCAs:  caCertPool,
+				ClientAuth: tls.RequireAndVerifyClientCert,
+			}
+			tlsConfig.BuildNameToCertificate()
+			s.server.TLSConfig = tlsConfig
+
 			err = s.server.ListenAndServeTLS(s.config.Security.Tls.CertFile, s.config.Security.Tls.KeyFile)
 		} else {
 			err = s.server.ListenAndServe()
